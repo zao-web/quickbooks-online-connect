@@ -1,8 +1,8 @@
 <?php
-namespace WDS_WP_REST_API\Storage;
+namespace Zao\WP_API\Storage;
 
 use Exception;
-use WDS_WP_REST_API\Storage\Store_Interface;
+use Zao\WP_API\Storage\Store_Interface;
 
 class Options implements Store_Interface {
 
@@ -147,7 +147,7 @@ class Options implements Store_Interface {
 		} else {
 			// May want this to be true if using these connections on most page-loads.
 			// But likely authenticated requests are used sparingly
-			if ( apply_filters( 'wds_rest_connect_autoload_options', $this->do_autoload, $this->get_key() ) ) {
+			if ( apply_filters( 'rest_connect_autoload_options', $this->do_autoload, $this->get_key() ) ) {
 				$updated = $this->update_db( $this->get_key(), $this->option );
 			} else {
 				$updated = $this->add_db( $this->get_key(), $this->option, '', 'no' );
@@ -162,7 +162,7 @@ class Options implements Store_Interface {
 	 */
 	public function get_key() {
 		if ( empty( $this->key ) ) {
-			throw new Exception( 'WDS_WP_REST_API\Storage\Options::$key is required.' );
+			throw new Exception( 'Zao\WP_API\Storage\Options::$key is required.' );
 		}
 
 		return $this->key;

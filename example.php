@@ -3,10 +3,10 @@
 require_once 'vendor/autoload.php';
 
 // include the library.
-require_once( 'wds-wp-rest-api-connect.php' );
+require_once( 'wp-rest-api-connect.php' );
 
 /**
- * Example WDS_WP_REST_API\OAuth1\Connect usage
+ * Example Zao\WP_API\OAuth1\Connect usage
  * To test it out, go to your site's WP dashboard:
  * YOURSITE-URL/wp-admin/?api-connect
  */
@@ -21,7 +21,7 @@ function wp_json_api_initiate_sample_connection() {
 	add_action( 'all_admin_notices', 'wp_json_api_show_sample_connection_notices' );
 
 	// Get the connect object
-	$api_connect = new WDS_WP_REST_API\OAuth1\Connect();
+	$api_connect = new Zao\WP_API\OAuth1\Connect();
 
 	// Consumer credentials
 	$client = array(
@@ -88,7 +88,7 @@ function wp_json_api_show_sample_connection_notices() {
 		return print( $message );
 	}
 
-	$reset_button = '<p><a class="button-secondary" href="'. add_query_arg( 'reset-connection', true ) .'">' . __( 'Reset Connection', 'wds-rest-connect-ui' ) . '</a></p>';
+	$reset_button = '<p><a class="button-secondary" href="'. add_query_arg( 'reset-connection', true ) .'">' . __( 'Reset Connection', 'rest-connect-ui' ) . '</a></p>';
 
 	// Get the API Description object from the root API endpoint.
 	// echo '<div id="message" class="updated">';

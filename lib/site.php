@@ -1,5 +1,5 @@
 <?php
-namespace WDS_WP_REST_API\Discover;
+namespace Zao\WP_API\Discover;
 
 /**
  * Site data from an API index.

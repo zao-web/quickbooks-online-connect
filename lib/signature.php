@@ -11,7 +11,7 @@
  * If the above pull request is accepted, we will not need this class.
  */
 
-namespace WDS_WP_REST_API\OAuth1;
+namespace Zao\WP_API\OAuth1;
 
 use League\OAuth1\Client\Signature;
 use League\OAuth1\Client\Signature\SignatureInterface;

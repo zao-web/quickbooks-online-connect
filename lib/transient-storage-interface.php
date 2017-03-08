@@ -1,5 +1,5 @@
 <?php
-namespace WDS_WP_REST_API\Storage;
+namespace Zao\WP_API\Storage;
 
 interface Transient_Interface {
 

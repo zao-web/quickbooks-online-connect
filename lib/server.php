@@ -12,13 +12,13 @@
  * AND the above pull request is accepted, we will not need these two classes.
  */
 
-namespace WDS_WP_REST_API\OAuth1;
+namespace Zao\WP_API\OAuth1;
 
 use League\OAuth1\Client\Server\Server;
 use League\OAuth1\Client\Server\User;
 use League\OAuth1\Client\Credentials\TokenCredentials;
 use League\OAuth1\Client\Credentials\TemporaryCredentials;
-use WDS_WP_REST_API\OAuth1\WPSignature;
+use Zao\WP_API\OAuth1\WPSignature;
 
 class WPServer extends Server {
 	protected $baseUri;
@@ -224,7 +224,7 @@ class WPServer extends Server {
 	public function handleTemporaryCredentialsFail( $e ) {
 		$response = $e->getResponse();
 		if ( 500 === $response->getStatusCode() ) {
-			$body = __( 'It is possible the Callback URL is invalid. Please check.', 'wds-wp-rest-api-connect' );
+			$body = __( 'It is possible the Callback URL is invalid. Please check.', 'wp-rest-api-connect' );
 			$response->setBody( $body );
 		}
 

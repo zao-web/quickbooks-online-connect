@@ -1,8 +1,8 @@
 <?php
-namespace WDS_WP_REST_API\Storage;
+namespace Zao\WP_API\Storage;
 
 use Exception;
-use WDS_WP_REST_API\Storage\Transient_Interface;
+use Zao\WP_API\Storage\Transient_Interface;
 
 class Transients implements Transient_Interface {
 
@@ -53,7 +53,7 @@ class Transients implements Transient_Interface {
 	 */
 	public function get_key() {
 		if ( empty( $this->key ) ) {
-			throw new Exception( 'WDS_WP_REST_API\Storage\Transients::$key is required.' );
+			throw new Exception( 'Zao\WP_API\Storage\Transients::$key is required.' );
 		}
 
 		return $this->key;

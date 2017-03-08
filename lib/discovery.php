@@ -1,7 +1,7 @@
 <?php
-namespace WDS_WP_REST_API;
+namespace Zao\WP_API;
 
-use WDS_WP_REST_API\Discover\Site;
+use Zao\WP_API\Discover\Site;
 use Exception;
 use Requests;
 use Requests_Exception_HTTP;

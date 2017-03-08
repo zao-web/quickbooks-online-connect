@@ -1,23 +1,24 @@
-WDS WP REST API Connect (0.2.6) [![Scrutinizer Code Quality](http://img.shields.io/scrutinizer/g/WebDevStudios/WDS-WP-JSON-API-Connect.svg?style=flat)](https://scrutinizer-ci.com/g/WebDevStudios/WDS-WP-JSON-API-Connect/)
+WP REST API Connect (0.2.6)
 =========
 
 A tool for connecting to the [REST API for WordPress](https://github.com/WP-API/WP-API) via [OAuth 1.0a](https://github.com/WP-API/OAuth1).
 
 To get started, you'll need to install both the [WP REST API plugin](https://github.com/WP-API/WP-API) and the [OAuth plugin](https://github.com/WP-API/OAuth1).
 
-To use this library, you will need to run `composer install` from the root of the library, and then include the main library file, `wds-wp-rest-api-connect.php` and the composer autoloader, `vendor/autoload.php` from your plugin/theme.
+To use this library, you will need to run `composer install` from the root of the library, and then include the main library file, `wp-rest-api-connect.php` and the composer autoloader, `vendor/autoload.php` from your plugin/theme.
 
 Once installed and activated, you'll need to create a '[Client Application](http://v2.wp-api.org/guide/authentication/#oauth-authentication)'.
-When you have the Client key and secret, you'll create a new `WDS_WP_REST_API\OAuth1\Connect` object by passing those credentials along with the REST API URL and the registered callback URL:
+When you have the Client key and secret, you'll create a new `Zao\WP_API\OAuth1\Connect` object by passing those credentials along with the REST API URL and the registered callback URL:
+
 ```php
 // Make sure you run `composer install`!
 require_once 'vendor/autoload.php';
 
 // include the library.
-require_once( 'wds-wp-rest-api-connect.php' );
+require_once( 'wp-rest-api-connect.php' );
 
 // Get the connect object
-$api_connect = new WDS_WP_REST_API\OAuth1\Connect();
+$api_connect = new Zao\WP_API\OAuth1\Connect();
 
 // Client credentials
 $client = array(
@@ -44,12 +45,13 @@ $discovery = $api_connect->init( $client );
 
 ```
 
-You can then use this object to retrieve the authentication request URL, or if you have been authenticated, make requests. To see a full example, view [the included example.php file](https://github.com/WebDevStudios/WDS-WP-REST-API-Connect/blob/master/example.php).
+You can then use this object to retrieve the authentication request URL, or if you have been authenticated, make requests. To see a full example, view [the included example.php file](https://github.com/zao-web/WP-REST-API-Connect/blob/master/example.php).
 
 ## Changelog
 
 ### 0.2.6
 * Remove Ryan McCue's Requests library from composer since it now exists in WP core.
+* Zaoify.
 
 ### 0.2.5
 * Fix a typo from a variable which should be using an object property (for legacy mode).
