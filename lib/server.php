@@ -18,7 +18,7 @@ use League\OAuth1\Client\Server\Server;
 use League\OAuth1\Client\Server\User;
 use League\OAuth1\Client\Credentials\TokenCredentials;
 use League\OAuth1\Client\Credentials\TemporaryCredentials;
-use Zao\WP_API\OAuth1\WPSignature;
+use League\OAuth1\Client\Signature\HmacSha1Signature;
 
 class WPServer extends Server {
 	protected $baseUri;
@@ -54,7 +54,7 @@ class WPServer extends Server {
 		}
 
 		// Our signature object handles multi-dimensional arrays.
-		$signature = $signature ? $signature : new WPSignature( $clientCredentials );
+		$signature = $signature ? $signature : new HmacSha1Signature( $clientCredentials );
 		parent::__construct($clientCredentials, $signature);
 	}
 
