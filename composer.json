@@ -1,5 +1,5 @@
 {
-    "name": "zao-web/wp-rest-api-connect",
+    "name": "zao-web/wp-api-connect",
     "description": "Helper class for connecting from one WordPress installation to another via the WordPress REST API and OAuth.",
     "license": "GPL-2.0+",
     "authors": [

@@ -5,7 +5,7 @@ A tool for connecting to the [REST API for WordPress](https://github.com/WP-API/
 
 To get started, you'll need to install both the [WP REST API plugin](https://github.com/WP-API/WP-API) and the [OAuth plugin](https://github.com/WP-API/OAuth1).
 
-To use this library, you will need to run `composer install` from the root of the library, and then include the main library file, `wp-rest-api-connect.php` and the composer autoloader, `vendor/autoload.php` from your plugin/theme.
+To use this library, you will need to run `composer install` from the root of the library, and then include the main library file, `wp-api-connect.php` and the composer autoloader, `vendor/autoload.php` from your plugin/theme.
 
 Once installed and activated, you'll need to create a '[Client Application](http://v2.wp-api.org/guide/authentication/#oauth-authentication)'.
 When you have the Client key and secret, you'll create a new `Zao\WP_API\OAuth1\Connect` object by passing those credentials along with the REST API URL and the registered callback URL:
@@ -15,7 +15,7 @@ When you have the Client key and secret, you'll create a new `Zao\WP_API\OAuth1\
 require_once 'vendor/autoload.php';
 
 // include the library.
-require_once( 'wp-rest-api-connect.php' );
+require_once( 'wp-api-connect.php' );
 
 // Get the connect object
 $api_connect = new Zao\WP_API\OAuth1\Connect();

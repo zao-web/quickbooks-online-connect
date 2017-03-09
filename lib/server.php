@@ -223,7 +223,7 @@ class WPServer extends Server {
 	public function handleTemporaryCredentialsFail( $e ) {
 		$response = $e->getResponse();
 		if ( 500 === $response->getStatusCode() ) {
-			$body = __( 'It is possible the Callback URL is invalid. Please check.', 'wp-rest-api-connect' );
+			$body = __( 'It is possible the Callback URL is invalid. Please check.', 'wp-api-connect' );
 			$response->setBody( $body );
 		}
 

@@ -3,7 +3,7 @@
 require_once 'vendor/autoload.php';
 
 // include the library.
-require_once( 'wp-rest-api-connect.php' );
+require_once( 'wp-api-connect.php' );
 
 /**
  * Example Zao\WP_API\OAuth1\Connect usage
