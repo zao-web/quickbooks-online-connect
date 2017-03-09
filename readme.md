@@ -1,4 +1,4 @@
-WP REST API Connect (0.2.6)
+WP API Connect (0.2.6)
 =========
 
 A tool for connecting to the [REST API for WordPress](https://github.com/WP-API/WP-API) via [OAuth 1.0a](https://github.com/WP-API/OAuth1).
@@ -45,13 +45,13 @@ $discovery = $api_connect->init( $client );
 
 ```
 
-You can then use this object to retrieve the authentication request URL, or if you have been authenticated, make requests. To see a full example, view [the included example.php file](https://github.com/zao-web/WP-REST-API-Connect/blob/master/example.php).
+You can then use this object to retrieve the authentication request URL, or if you have been authenticated, make requests. To see a full example, view [the included example.php file](https://github.com/zao-web/wp-api-connect/blob/master/example.php).
 
 ## Changelog
 
 ### 0.2.6
 * Remove Ryan McCue's Requests library from composer since it now exists in WP core.
-* Zaoify.
+* Rename.
 
 ### 0.2.5
 * Fix a typo from a variable which should be using an object property (for legacy mode).

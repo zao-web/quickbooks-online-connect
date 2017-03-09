@@ -11,10 +11,10 @@
         }
     ],
     "keywords": ["wordpress", "wp-api", "json" ],
-    "homepage": "https://github.com/zao-web/WP-REST-API-Connect",
+    "homepage": "https://github.com/zao-web/wp-api-connect",
     "support": {
-        "issues": "https://github.com/zao-web/WP-REST-API-Connect/issues",
-        "source": "https://github.com/zao-web/WP-REST-API-Connect"
+        "issues": "https://github.com/zao-web/wp-api-connect/issues",
+        "source": "https://github.com/zao-web/wp-api-connect"
     },
     "require": {
         "php": ">5.3",
