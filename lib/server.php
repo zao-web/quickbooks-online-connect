@@ -170,13 +170,12 @@ class WPServer extends Server {
 			'options'      => array(),
 		) );
 
-		$headers = apply_filters( 'wp_rest_api_request_headers', $args['headers'], $uri );
 		$options = apply_filters( 'wp_rest_api_request_options', $args['options'], $uri );
-		$request_args = apply_filters( 'wp_rest_api_request_request_args', $args['request_args'], $uri );
+		$options['headers'] = apply_filters( 'wp_rest_api_request_headers', $args['headers'], $uri );
+		$options['form_params'] = apply_filters( 'wp_rest_api_request_request_args', $args['request_args'], $uri );
 
 		$this->response = $this->createHttpClient()
-			->createRequest( $args['method'], $uri, $headers, $request_args, $options )
-			->send();
+			->request( $args['method'], $uri, $options );
 
 		return $this->response;
 	}
