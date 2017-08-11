@@ -1,8 +1,8 @@
 <?php
-namespace Zao\WP_API\Storage;
+namespace Zao\QBO_API\Storage;
 
 use Exception;
-use Zao\WP_API\Storage\Store_Interface;
+use Zao\QBO_API\Storage\Store_Interface;
 
 class Options implements Store_Interface {
 
@@ -162,7 +162,7 @@ class Options implements Store_Interface {
 	 */
 	public function get_key() {
 		if ( empty( $this->key ) ) {
-			throw new Exception( 'Zao\WP_API\Storage\Options::$key is required.' );
+			throw new Exception( 'Zao\QBO_API\Storage\Options::$key is required.' );
 		}
 
 		return $this->key;

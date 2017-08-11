@@ -1,5 +1,5 @@
 <?php
-namespace Zao\WP_API\Discover;
+namespace Zao\QBO_API\Discover;
 
 /**
  * Site data from an API index.

@@ -1,8 +1,8 @@
 <?php
-namespace Zao\WP_API\Storage;
+namespace Zao\QBO_API\Storage;
 
 use Exception;
-use Zao\WP_API\Storage\Transient_Interface;
+use Zao\QBO_API\Storage\Transient_Interface;
 
 class Transients implements Transient_Interface {
 
@@ -53,7 +53,7 @@ class Transients implements Transient_Interface {
 	 */
 	public function get_key() {
 		if ( empty( $this->key ) ) {
-			throw new Exception( 'Zao\WP_API\Storage\Transients::$key is required.' );
+			throw new Exception( 'Zao\QBO_API\Storage\Transients::$key is required.' );
 		}
 
 		return $this->key;

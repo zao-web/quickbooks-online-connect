@@ -1,15 +1,15 @@
 <?php
 
-namespace Zao\WP_API\OAuth1;
+namespace Zao\QBO_API\OAuth1;
 
 use Exception;
 use WP_Error;
-use Zao\WP_API\Storage\Store_Interface;
-use Zao\WP_API\Storage\Transient_Interface;
-use Zao\WP_API\OAuth1\WPServer;
-use Zao\WP_API\Discover;
+use Zao\QBO_API\Storage\Store_Interface;
+use Zao\QBO_API\Storage\Transient_Interface;
+use Zao\QBO_API\OAuth1\WPServer;
+use Zao\QBO_API\Discover;
 
-if ( ! class_exists( 'Zao\WP_API\OAuth1\Connect' ) ) :
+if ( ! class_exists( 'Zao\QBO_API\OAuth1\Connect' ) ) :
 
 	/**
 	 * Connect to the WordPress REST API over OAuth1
@@ -82,8 +82,8 @@ if ( ! class_exists( 'Zao\WP_API\OAuth1\Connect' ) ) :
 		 */
 		public function __construct( $storage_classes = array() ) {
 			$storage_classes = wp_parse_args( $storage_classes, array(
-				'options_class' => 'Zao\WP_API\Storage\Options',
-				'transients_class' => 'Zao\WP_API\Storage\Transients',
+				'options_class' => 'Zao\QBO_API\Storage\Options',
+				'transients_class' => 'Zao\QBO_API\Storage\Transients',
 			) );
 
 			$this->instantiate_storage_objects(
@@ -212,7 +212,7 @@ if ( ! class_exists( 'Zao\WP_API\OAuth1\Connect' ) ) :
 			}
 
 			if ( ! $site->supportsAuthentication( 'oauth1' ) ) {
-				$error = new WP_Error( 'wp_rest_api_oauth_not_enabled_error', __( "Site doesn't appear to support OAuth 1.0a authentication.", 'wp-api-connect' ), $this->args() );
+				$error = new WP_Error( 'wp_rest_api_oauth_not_enabled_error', __( "Site doesn't appear to support OAuth 1.0a authentication.", 'qbo-connect' ), $this->args() );
 				return $this->update_stored_error( $error );
 			}
 
@@ -234,11 +234,11 @@ if ( ! class_exists( 'Zao\WP_API\OAuth1\Connect' ) ) :
 			$this->set_object_properties();
 
 			if ( ! $this->get_option( 'auth_urls' ) ) {
-				return new WP_Error( 'wp_rest_api_discovery_incomplete', sprintf( __( 'Please call %s.', 'wp-api-connect' ), __CLASS__ . '::do_discovery()' ), $this->args() );
+				return new WP_Error( 'wp_rest_api_discovery_incomplete', sprintf( __( 'Please call %s.', 'qbo-connect' ), __CLASS__ . '::do_discovery()' ), $this->args() );
 			}
 
 			if ( ! $this->client_key ) {
-				return new WP_Error( 'wp_rest_api_oauth_temp_credentials_failed', __( 'Missing client key.', 'wp-api-connect' ), $this->args() );
+				return new WP_Error( 'wp_rest_api_oauth_temp_credentials_failed', __( 'Missing client key.', 'qbo-connect' ), $this->args() );
 			}
 
 			$server = $this->get_server();
@@ -247,7 +247,7 @@ if ( ! class_exists( 'Zao\WP_API\OAuth1\Connect' ) ) :
 			try {
 				$temp_credentials = $server->getTemporaryCredentials();
 			} catch ( Exception $e ) {
-				$error = new WP_Error( 'wp_rest_api_oauth_temp_credentials_failed', sprintf( __( "There was a problem fetching the temporary credentials: %s", 'wp-api-connect' ), $e->getMessage() ), $this->args() );
+				$error = new WP_Error( 'wp_rest_api_oauth_temp_credentials_failed', sprintf( __( "There was a problem fetching the temporary credentials: %s", 'qbo-connect' ), $e->getMessage() ), $this->args() );
 
 				return $this->update_stored_error( $error );
 			}
@@ -320,7 +320,7 @@ if ( ! class_exists( 'Zao\WP_API\OAuth1\Connect' ) ) :
 		 */
 		public function redirect_to_login() {
 			if ( ! $this->client_key ) {
-				return new WP_Error( 'wp_rest_api_missing_client_data', __( 'Missing client key.', 'wp-api-connect' ), $this->args() );
+				return new WP_Error( 'wp_rest_api_missing_client_data', __( 'Missing client key.', 'qbo-connect' ), $this->args() );
 			}
 
 			$url = $this->get_authorization_url();
@@ -368,7 +368,7 @@ if ( ! class_exists( 'Zao\WP_API\OAuth1\Connect' ) ) :
 					false
 				);
 			} catch ( Exception $e ) {
-				$error = new WP_Error( 'wp_rest_api_oauth_do_authorization_failed', sprintf( __( "There was a problem completing authorization: %s", 'wp-api-connect' ), $e->getMessage() ), $this->args() );
+				$error = new WP_Error( 'wp_rest_api_oauth_do_authorization_failed', sprintf( __( "There was a problem completing authorization: %s", 'qbo-connect' ), $e->getMessage() ), $this->args() );
 
 				return $this->update_stored_error( $error );
 			}
@@ -391,7 +391,7 @@ if ( ! class_exists( 'Zao\WP_API\OAuth1\Connect' ) ) :
 		 */
 		public function get_user() {
 			if ( ! $this->access_token ) {
-				$error = new WP_Error( 'wp_rest_api_not_authorized', __( 'Authorization has not yet been granted.', 'wp-api-connect' ) , $this->args() );
+				$error = new WP_Error( 'wp_rest_api_not_authorized', __( 'Authorization has not yet been granted.', 'qbo-connect' ) , $this->args() );
 				return $this->update_stored_error( $error );
 			}
 
@@ -466,7 +466,7 @@ if ( ! class_exists( 'Zao\WP_API\OAuth1\Connect' ) ) :
 				return $this->store->get_key();
 			} catch ( Exception $e ) {
 				if ( $this->api_url ) {
-					return $this->store->set_key( 'apiconnect_' . md5( sanitize_text_field( $this->api_url ) ) );
+					return $this->store->set_key( 'zqbo_apiconnect_' . md5( sanitize_text_field( $this->api_url ) ) );
 				}
 			}
 
@@ -673,11 +673,11 @@ if ( ! class_exists( 'Zao\WP_API\OAuth1\Connect' ) ) :
 			$this->set_method( $method );
 
 			if ( ! $this->client_key ) {
-				return new WP_Error( 'wp_rest_api_missing_client_data', __( 'Missing client key.', 'wp-api-connect' ), $this->args() );
+				return new WP_Error( 'wp_rest_api_missing_client_data', __( 'Missing client key.', 'qbo-connect' ), $this->args() );
 			}
 
 			if ( ! $this->access_token || ! $this->get_option( 'token_credentials' ) ) {
-				return new WP_Error( 'wp_rest_api_not_authorized', __( 'Authorization has not yet been granted.', 'wp-api-connect' ) , $this->args() );
+				return new WP_Error( 'wp_rest_api_not_authorized', __( 'Authorization has not yet been granted.', 'qbo-connect' ) , $this->args() );
 			}
 
 			$this->endpoint_url = $this->api_url( $path );
@@ -702,7 +702,7 @@ if ( ! class_exists( 'Zao\WP_API\OAuth1\Connect' ) ) :
 			}
 
 			if ( ! $response ) {
-				$error = sprintf( __( "Received error [%s] with status code [%s] when making request.", 'wp-api-connect' ), $body, $server->response_code );
+				$error = sprintf( __( "Received error [%s] with status code [%s] when making request.", 'qbo-connect' ), $body, $server->response_code );
 				$response = new WP_Error( 'wp_rest_api_response_error', $error );
 			}
 
@@ -774,12 +774,12 @@ if ( ! class_exists( 'Zao\WP_API\OAuth1\Connect' ) ) :
 		 */
 		public function get_api_description() {
 			if ( ! $this->client_key ) {
-				return new WP_Error( 'wp_rest_api_missing_client_data', __( 'Missing client key.', 'wp-api-connect' ), $this->args() );
+				return new WP_Error( 'wp_rest_api_missing_client_data', __( 'Missing client key.', 'qbo-connect' ), $this->args() );
 			}
 
 			if ( ! $this->json_desc ) {
 				if ( ! $this->cache_api_description_for_api_url() ) {
-					return new WP_Error( 'wp_rest_api_connection_failed_error', __( 'There was a problem connecting to the API URL specified.', 'wp-api-connect' ), $this->args() );
+					return new WP_Error( 'wp_rest_api_connection_failed_error', __( 'There was a problem connecting to the API URL specified.', 'qbo-connect' ), $this->args() );
 				}
 			}
 			return $this->json_desc;
@@ -805,7 +805,7 @@ if ( ! class_exists( 'Zao\WP_API\OAuth1\Connect' ) ) :
 			$error = false;
 
 			if ( ! $body || ( isset( $this->response['response']['code'] ) && 200 != $this->response['response']['code'] ) ) {
-				$error = sprintf( __( 'Could not retrive body from URL: "%s"', 'wp-api-connect' ), $this->api_url );
+				$error = sprintf( __( 'Could not retrive body from URL: "%s"', 'qbo-connect' ), $this->api_url );
 
 				$this->update_stored_error( $error );
 

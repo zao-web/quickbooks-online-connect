@@ -1,5 +1,5 @@
 <?php
-namespace Zao\WP_API\Storage;
+namespace Zao\QBO_API\Storage;
 
 interface Transient_Interface {
 

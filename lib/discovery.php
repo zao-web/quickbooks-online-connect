@@ -1,7 +1,7 @@
 <?php
-namespace Zao\WP_API;
+namespace Zao\QBO_API;
 
-use Zao\WP_API\Discover\Site;
+use Zao\QBO_API\Discover\Site;
 use Exception;
 use Requests;
 use Requests_Exception_HTTP;

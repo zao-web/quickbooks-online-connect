@@ -12,7 +12,7 @@
  * AND the above pull request is accepted, we will not need these two classes.
  */
 
-namespace Zao\WP_API\OAuth1;
+namespace Zao\QBO_API\OAuth1;
 
 use League\OAuth1\Client\Server\Server;
 use League\OAuth1\Client\Server\User;
@@ -223,7 +223,7 @@ class WPServer extends Server {
 	public function handleTemporaryCredentialsFail( $e ) {
 		$response = $e->getResponse();
 		if ( 500 === $response->getStatusCode() ) {
-			$body = __( 'It is possible the Callback URL is invalid. Please check.', 'wp-api-connect' );
+			$body = __( 'It is possible the Callback URL is invalid. Please check.', 'qbo-connect' );
 			$response->setBody( $body );
 		}
 

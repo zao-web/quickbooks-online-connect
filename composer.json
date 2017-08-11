@@ -1,5 +1,5 @@
 {
-    "name": "zao-web/wp-api-connect",
+    "name": "zao-web/qbo-connect",
     "description": "Helper class for connecting from one WordPress installation to another via the WordPress REST API and OAuth.",
     "license": "GPL-2.0+",
     "authors": [
@@ -11,10 +11,10 @@
         }
     ],
     "keywords": ["wordpress", "wp-api", "json" ],
-    "homepage": "https://github.com/zao-web/wp-api-connect",
+    "homepage": "https://github.com/zao-web/qbo-connect",
     "support": {
-        "issues": "https://github.com/zao-web/wp-api-connect/issues",
-        "source": "https://github.com/zao-web/wp-api-connect"
+        "issues": "https://github.com/zao-web/qbo-connect/issues",
+        "source": "https://github.com/zao-web/qbo-connect"
     },
     "require": {
         "php": ">5.3",

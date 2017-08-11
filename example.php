@@ -3,10 +3,10 @@
 require_once 'vendor/autoload.php';
 
 // include the library.
-require_once( 'wp-api-connect.php' );
+require_once( 'qbo-connect.php' );
 
 /**
- * Example Zao\WP_API\OAuth1\Connect usage
+ * Example Zao\QBO_API\OAuth1\Connect usage
  * To test it out, go to your site's WP dashboard:
  * YOURSITE-URL/wp-admin/?api-connect
  */
@@ -21,7 +21,7 @@ function wp_json_api_initiate_sample_connection() {
 	add_action( 'all_admin_notices', 'wp_json_api_show_sample_connection_notices' );
 
 	// Get the connect object
-	$api_connect = new Zao\WP_API\OAuth1\Connect();
+	$api_connect = new Zao\QBO_API\OAuth1\Connect();
 
 	// Consumer credentials
 	$client = array(
