@@ -1,77 +1,45 @@
 <?php
 
-namespace Zao\QBO_API\OAuth1;
+namespace Zao\QBO_API;
 
 use Exception;
 use WP_Error;
-use Zao\QBO_API\Storage\Store_Interface;
-use Zao\QBO_API\Storage\Transient_Interface;
-use Zao\QBO_API\OAuth1\WPServer;
-use Zao\QBO_API\Discover;
 
-if ( ! class_exists( 'Zao\QBO_API\OAuth1\Connect' ) ) :
+if ( ! class_exists( 'Zao\QBO_API\Connect' ) ) :
 
 	/**
-	 * Connect to the WordPress REST API over OAuth1
-	 *
-	 * API Documentation
-	 * https://github.com/WP-API/WP-API/tree/master/docs
-	 *
-	 * OAuth Authentication API
-	 * https://github.com/WP-API/OAuth1/blob/master/docs/spec.md
-	 *
-	 * The OAuth 1.0 Protocol
-	 * http://tools.ietf.org/html/rfc5849
+	 * Connect to Quickbooks via OAuth
 	 *
 	 * @author  Justin Sternberg <jt@zao.is>
 	 * @package Connect
-	 * @version 0.2.6
+	 * @version 0.1.0
 	 */
 	class Connect {
 
 		/**
 		 * Connect version
 		 */
-		const VERSION = '0.2.6';
-
-		/**
-		 * OAuth1 Client
-		 *
-		 * @var WPServer
-		 */
-		protected $server;
+		const VERSION = '0.1.0';
 
 		/**
 		 * Options Store
 		 *
-		 * @var Store_Interface
+		 * @var Storage\Store_Interface
 		 */
 		protected $store;
 
-		/**
-		 * Transients Store
-		 *
-		 * @var Transient_Interface
-		 */
-		protected $transient;
-
-		protected $key                 = '';
-		protected $client_key        = '';
-		protected $client_secret     = '';
-		protected $api_url             = '';
-		protected $headers             = '';
-		protected $callback_uri        = '';
-		protected $access_token        = '';
-		protected $access_token_secret = '';
-		protected $endpoint_url        = '';
-
+		protected $client_key     = '';
+		protected $client_secret  = '';
+		protected $api_url        = 'https://sandbox-quickbooks.api.intuit.com/';
+		protected $scope          = 'com.intuit.quickbooks.accounting';
+		protected $callback_uri   = '';
+		protected $sandbox        = true;
+		protected $access_token   = '';
+		protected $refresh_token  = '';
+		protected $realm_id       = '';
 		protected $is_authorizing = null;
 		protected $autoredirect_authoriziation = true;
-		protected $method  = 'GET';
-
-		public $json_desc = '';
-		public $response;
-		public $response_code;
+		protected $discovery;
 
 		/**
 		 * Connect object constructor.
@@ -80,7 +48,7 @@ if ( ! class_exists( 'Zao\QBO_API\OAuth1\Connect' ) ) :
 		 *
 		 * @param array $storage_classes (optional) override the storage classes.
 		 */
-		public function __construct( $storage_classes = array() ) {
+		public function __construct( $storage_classes = array(), $sandbox = true ) {
 			$storage_classes = wp_parse_args( $storage_classes, array(
 				'options_class' => 'Zao\QBO_API\Storage\Options',
 				'transients_class' => 'Zao\QBO_API\Storage\Transients',
@@ -88,7 +56,10 @@ if ( ! class_exists( 'Zao\QBO_API\OAuth1\Connect' ) ) :
 
 			$this->instantiate_storage_objects(
 				new $storage_classes['options_class'](),
-				new $storage_classes['options_class']( false ),
+				new $storage_classes['options_class']( false )
+			);
+
+			$this->discovery = new Discover(
 				new $storage_classes['transients_class']()
 			);
 		}
@@ -98,21 +69,15 @@ if ( ! class_exists( 'Zao\QBO_API\OAuth1\Connect' ) ) :
 		 *
 		 * @since  0.2.0
 		 *
-		 * @param  Store_Interface     $store       Option storage
-		 * @param  Store_Interface     $error_store Error option storage
-		 * @param  Transient_Interface $transient   Transient storage
+		 * @param  Storage\Store_Interface $store       Option storage
+		 * @param  Storage\Store_Interface $error_store Error option storage
 		 */
 		protected function instantiate_storage_objects(
-			Store_Interface $store,
-			Store_Interface $error_store,
-			Transient_Interface $transient
+			Storage\Store_Interface $store,
+			Storage\Store_Interface $error_store
 		) {
-			$this->store = $store;
-			$this->error_store = $error_store;
-			$this->error_store->set_key( 'wp_rest_api_connect_error' );
-
-			$this->transient = $transient;
-			$this->transient->set_key( 'apiconectdesc_'. md5( serialize( $this ) ) );
+			$this->store       = $store->set_key( 'zqbo_apiconnect' );
+			$this->error_store = $error_store->set_key( 'zqbo_apiconnect_error' );
 		}
 
 		/**
@@ -120,32 +85,29 @@ if ( ! class_exists( 'Zao\QBO_API\OAuth1\Connect' ) ) :
 		 *
 		 * @since 0.1.0
 		 *
-		 * @param array $args Arguments containing 'client_key', 'client_secret', 'api_url',
-		 *                    'headers', 'callback_uri', 'autoredirect_authoriziation'
+		 * @param array $args Arguments containing 'client_key', 'client_secret',
+		 *                    'callback_uri', 'sandbox', 'autoredirect_authoriziation'
 		 */
 		public function init( $args ) {
 			foreach ( wp_parse_args( $args, array(
-				'client_key'                => '',
-				'client_secret'             => '',
-				'api_url'                     => '',
-				'headers'                     => '',
+				'client_key'                  => '',
+				'client_secret'               => '',
 				'callback_uri'                => '',
+				'sandbox'                     => true,
 				'autoredirect_authoriziation' => true,
 			) ) as $key => $arg ) {
 				$this->{$key} = $arg;
 			}
 
-			if ( $this->key() ) {
-				$this->set_object_properties();
-			}
+			$this->set_object_properties();
 
-			// If we haven't done API discovery yet, do that now.
-			$discovered = ! $this->discovered() ? $this->do_discovery() : true;
+			$this->api_url => $this->sandbox
+				? 'https://sandbox-quickbooks.api.intuit.com/'
+				: 'https://quickbooks.api.intuit.com/',
 
-			// If discovery failed, we cannot proceed.
-			if ( is_wp_error( $discovered ) ) {
-				return $discovered;
-			}
+			$this->discovery
+				->set_sandbox( $this->sandbox )
+				->maybe_do_discovery();
 
 			// If autoredirect is requested, and we are not yet authorized,
 			// redirect to the other site to get authorization.
@@ -175,86 +137,42 @@ if ( ! class_exists( 'Zao\QBO_API\OAuth1\Connect' ) ) :
 			$creds = $this->get_option( 'token_credentials' );
 
 			if ( is_object( $creds ) ) {
-				$this->access_token = $creds->getIdentifier();
-				$this->access_token_secret = $creds->getSecret();
+				$this->access_token = $creds->access_token;
+				$this->refresh_token = $creds->refresh_token;
 			}
+
+			$this->realm_id = $this->get_option( 'realmId' );
 		}
 
 		/**
-		 * Do the API discovery.
-		 *
-		 * @since  0.2.0
-		 *
-		 * @param  string $url The URL to discover.
-		 *
-		 * @return string|WP_Error The API endpoint URL or WP_Error.
-		 */
-		public function do_discovery( $url = '' ) {
-			$url = esc_url_raw( $url ? $url : $this->api_url );
-
-			try {
-				$args = ! empty( $this->headers )
-					? array( 'headers' => $this->headers )
-					: array();
-
-				$disover = new Discover( $url, $args );
-				$site = $disover->site();
-			}
-			catch ( Exception $e ) {
-				$msg = sprintf( __( 'There is a problem with the provided api_url parameter. %s.' ), htmlspecialchars( $e->getMessage() ) );
-				return $this->update_stored_error( $msg );
-			}
-
-			if ( empty( $site ) ) {
-				$msg = sprintf( __( "Couldn't find the API at <code>%s</code>." ), htmlspecialchars( $url ) );
-				$error = new WP_Error( 'wp_rest_api_rest_api_not_found', $msg, $this->args() );
-				return $this->update_stored_error( $error );
-			}
-
-			if ( ! $site->supportsAuthentication( 'oauth1' ) ) {
-				$error = new WP_Error( 'wp_rest_api_oauth_not_enabled_error', __( "Site doesn't appear to support OAuth 1.0a authentication.", 'qbo-connect' ), $this->args() );
-				return $this->update_stored_error( $error );
-			}
-
-			$this->set_api_url( $site->getIndexURL() );
-			$this->update_option( 'api_url', $this->api_url, false );
-			$this->update_option( 'auth_urls', $site->getAuthenticationData( 'oauth1' ) );
-
-			return $this->api_url;
-		}
-
-		/**
-		 * Get the authorization (login) URL for the server.
+		 * Get the authorization (login) URL for the server with configured redirect.
 		 *
 		 * @since  0.2.0
 		 *
 		 * @return string|WP_Error Authorization URL or WP_Error.
 		 */
-		public function get_authorization_url() {
+		public function get_full_authorization_url() {
 			$this->set_object_properties();
 
-			if ( ! $this->get_option( 'auth_urls' ) ) {
-				return new WP_Error( 'wp_rest_api_discovery_incomplete', sprintf( __( 'Please call %s.', 'qbo-connect' ), __CLASS__ . '::do_discovery()' ), $this->args() );
-			}
-
 			if ( ! $this->client_key ) {
-				return new WP_Error( 'wp_rest_api_oauth_temp_credentials_failed', __( 'Missing client key.', 'qbo-connect' ), $this->args() );
+				return new WP_Error( 'qbo_connect_api_missing_client_data', __( 'Missing client key.', 'qbo-connect' ), $this->args() );
 			}
 
-			$server = $this->get_server();
-			// First part of OAuth 1.0 authentication is retrieving temporary credentials.
-			// These identify you as a client to the server.
-			try {
-				$temp_credentials = $server->getTemporaryCredentials();
-			} catch ( Exception $e ) {
-				$error = new WP_Error( 'wp_rest_api_oauth_temp_credentials_failed', sprintf( __( "There was a problem fetching the temporary credentials: %s", 'qbo-connect' ), $e->getMessage() ), $this->args() );
+			$this->set_callback_uri( $this->callback_uri ? $this->callback_uri : $this->get_requested_url() );
 
-				return $this->update_stored_error( $error );
-			}
+			$state = urlencode( 'step=authorize&nonce=' . wp_create_nonce( md5( __FILE__ ) ) );
 
-			$this->update_option( 'temp_credentials', $temp_credentials );
+			$url_params = array(
+				'client_id'     => $this->client_key,
+				'scope'         => $this->scope,
+				'redirect_uri'  => urlencode( $this->callback_uri ),
+				'response_type' => 'code',
+				'state'         => $state,
+			);
 
-			return $server->getAuthorizationUrl( $temp_credentials );
+			$url = add_query_arg( $url_params, $this->request_authorize_url() );
+
+			return $url;
 		}
 
 		/**
@@ -271,22 +189,60 @@ if ( ! class_exists( 'Zao\QBO_API\OAuth1\Connect' ) ) :
 
 			$this->is_authorizing = false;
 
-			if ( isset(
-				$_REQUEST['step'],
-				$_REQUEST['auth_key'],
-				$_REQUEST['auth_nonce'],
-				$_REQUEST['oauth_token'],
-				$_REQUEST['oauth_verifier']
-			) && 'authorize' === $_REQUEST['step'] ) {
-
-				$nonce_check = wp_verify_nonce( $_REQUEST['auth_nonce'], md5( __FILE__ ) );
-				$key_check = $_REQUEST['auth_key'] === $this->key();
-
-				if ( $key_check && $nonce_check ) {
-					$this->do_authorization( $_REQUEST['oauth_token'], $_REQUEST['oauth_verifier'] );
-					$this->is_authorizing = true;
-				}
+			// Nope, not trying to authorize.
+			if ( ! isset(
+				$_GET['state'],
+				$_GET['code'],
+				$_GET['realmId']
+			) ) {
+				return $this->is_authorizing;
 			}
+
+			parse_str( $_GET['state'], $to_verify );
+
+			// Missing the proper state params.
+			if (
+				! isset(
+					$to_verify['step'],
+					$to_verify['nonce']
+				)
+				|| 'authorize' !== $to_verify['step']
+				|| ! wp_verify_nonce( $to_verify['nonce'], md5( __FILE__ ) )
+			) {
+				return $this->is_authorizing;
+			}
+
+			$this->update_option( 'realmId', sanitize_text_field( $_GET['realmId'] ) );
+
+			if ( empty( $_GET['error'] ) ) {
+				// Ok, we're good to progress.
+
+				$this->request_access( $_GET['code'] );
+				$this->is_authorizing = true;
+
+				return $this->is_authorizing;
+			}
+
+			// Let's figure out the error.
+			switch ( $_GET['error'] ) {
+				case 'access_denied':
+					$error = 'The user did not authorize the request.';
+					break;
+				case 'invalid_scope':
+					$error = 'An invalid scope string was sent in the request.';
+					break;
+				default:
+					$error = 'unknown';
+					break;
+			}
+
+			$error = new WP_Error(
+				'qbo_connect_api_oauth_request_authorization_failed',
+				sprintf( __( 'There was a problem completing the authorization request: "%s"', 'qbo-connect' ), $error ),
+				$this->args()
+			);
+
+			$this->update_stored_error( $error );
 
 			return $this->is_authorizing;
 		}
@@ -320,10 +276,10 @@ if ( ! class_exists( 'Zao\QBO_API\OAuth1\Connect' ) ) :
 		 */
 		public function redirect_to_login() {
 			if ( ! $this->client_key ) {
-				return new WP_Error( 'wp_rest_api_missing_client_data', __( 'Missing client key.', 'qbo-connect' ), $this->args() );
+				return new WP_Error( 'qbo_connect_api_missing_client_data', __( 'Missing client key.', 'qbo-connect' ), $this->args() );
 			}
 
-			$url = $this->get_authorization_url();
+			$url = $this->get_full_authorization_url();
 			if ( is_wp_error( $url ) ) {
 				return $url;
 			}
@@ -335,51 +291,125 @@ if ( ! class_exists( 'Zao\QBO_API\OAuth1\Connect' ) ) :
 		}
 
 		/**
-		 * Swap temporary credentials for permanent authorized credentials.
+		 * Exchange refresh token.
 		 *
 		 * @since  0.2.0
 		 *
-		 * @param  string  $oauth_token
-		 * @param  string  $oauth_verifier
+		 * @return mixed WP_Error if failure, else true
+		 */
+		public function request_refresh_token() {
+			$creds = $this->get_option( 'token_credentials' );
+
+			if ( empty( $creds->refresh_token ) ) {
+
+				$error = new WP_Error( 'qbo_connect_api_missing_token_data', __( 'Missing authorization token credentials required for refreshing tokens.', 'qbo-connect' ), $this->args() );
+
+				return $this->update_stored_error( $error );
+			}
+
+			$args = array(
+				'grant_type'    => 'refresh_token',
+				'refresh_token' => $creds->refresh_token,
+			);
+
+			return $this->_token_request( $args, array(
+				'non_200_error' => array(
+					'id' => 'qbo_connect_api_oauth_refresh_token_failed',
+					'message_format' => __( "There was a problem refreshing the authentication token. Request response error code: %d, response body: %s", 'qbo-connect' ),
+				),
+				'json_read_error' => array(
+					'id' => 'qbo_connect_api_oauth_refresh_token_failed',
+					'message_format' => __( "There was a problem refreshing the authentication token: %s", 'qbo-connect' ),
+				),
+			) );
+		}
+
+		/**
+		 * Exchange code for refresh and access tokens.
 		 *
+		 * After the app receives the authorization code,
+		 * it exchanges the authorization code for refresh and access tokens.
+		 *
+		 * @since  0.2.0
+		 *
+		 * @param  string  $auth_code
 		 * @return mixed   WP_Error if failure, else redirect to callback_uri.
 		 */
-		public function do_authorization( $oauth_token, $oauth_verifier ) {
-			$server = $this->get_server();
+		public function request_access( $auth_code ) {
+			$args = array(
+				'grant_type'   => 'authorization_code',
+				'code'         => $auth_code,
+				'redirect_uri' => $this->callback_uri,
+			);
 
-			// Retrieve the temporary credentials from step 2
-			$temp_credentials = $this->get_option( 'temp_credentials' );
+			$result = $this->_token_request( $args, array(
+				'non_200_error' => array(
+					'id' => 'qbo_connect_api_oauth_request_access_failed',
+					'message_format' => __( "There was a problem completing authorization. Request response error code: %d, response body: %s", 'qbo-connect' ),
+				),
+				'json_read_error' => array(
+					'id' => 'qbo_connect_api_oauth_request_access_failed',
+					'message_format' => __( "There was a problem completing authorization: %s", 'qbo-connect' ),
+				),
+			) );
 
-			if ( ! $temp_credentials ) {
-				$msg = __( "Couldn't find the API temporary credentials." );
-				$error = new WP_Error( 'wp_rest_api_missing_temp_credentials', $msg, $this->args() );
-				return $this->update_stored_error( $error );
+			if ( is_wp_error( $result ) ) {
+				return $result;
 			}
-
-			try {
-				/*
-				 * Third and final part to OAuth 1.0 authentication is to retrieve token
-				 * credentials (formally known as access tokens in earlier OAuth 1.0
-				 * specs).
-				 */
-				$this->update_option(
-					'token_credentials',
-					$server->getTokenCredentials( $temp_credentials, $oauth_token, $oauth_verifier ),
-					false
-				);
-			} catch ( Exception $e ) {
-				$error = new WP_Error( 'wp_rest_api_oauth_do_authorization_failed', sprintf( __( "There was a problem completing authorization: %s", 'qbo-connect' ), $e->getMessage() ), $this->args() );
-
-				return $this->update_stored_error( $error );
-			}
-
-
-			// Now, we'll store the token credentials and discard the
-			// temporary ones - they're irrelevant at this stage.
-			$this->delete_option( 'temp_credentials' );
 
 			wp_redirect( $this->callback_uri );
 			exit();
+		}
+
+		protected function _token_request( $args, $errors ) {
+			$this->set_callback_uri( $this->callback_uri ? $this->callback_uri : $this->get_requested_url() );
+
+			$gotten = wp_remote_post( $this->request_token_url(), array(
+				'headers' => $this->_token_request_headers(),
+				'body'    => $args,
+			) );
+
+			$code  = wp_remote_retrieve_response_code( $gotten );
+			$body  = wp_remote_retrieve_body( $gotten );
+			$error = '';
+
+			if ( 200 !== $code ) {
+
+				$error = new WP_Error(
+					$errors['non_200_error']['id'],
+					sprintf( $errors['non_200_error']['message_format'], $code, $body ),
+					$this->args()
+				);
+
+			} else {
+				try {
+					$this->update_option(
+						'token_credentials',
+						self::get_json_if_json( $body )
+					);
+				} catch ( Exception $e ) {
+					$error = new WP_Error(
+						$errors['json_read_error']['id'],
+						sprintf( $errors['json_read_error']['message_format'], $e->getMessage() ),
+						$this->args()
+					);
+				}
+			}
+
+			if ( is_wp_error( $error ) ) {
+				return $this->update_stored_error( $error );
+			}
+
+			return $this->get_option( 'token_credentials' );
+		}
+
+		protected function _token_request_headers() {
+			$auth = 'Basic ' . base64_encode( $this->client_key . ':' . $this->client_secret );
+			return array(
+				'Authorization' => $auth,
+				'Accept'        => 'application/json',
+				'Content-Type'  => 'application/x-www-form-urlencoded',
+			);
 		}
 
 		/**
@@ -389,51 +419,8 @@ if ( ! class_exists( 'Zao\QBO_API\OAuth1\Connect' ) ) :
 		 *
 		 * @return mixed  User object or WP_Error object.
 		 */
-		public function get_user() {
-			if ( ! $this->access_token ) {
-				$error = new WP_Error( 'wp_rest_api_not_authorized', __( 'Authorization has not yet been granted.', 'qbo-connect' ) , $this->args() );
-				return $this->update_stored_error( $error );
-			}
-
-			try {
-				$user = $this->get_server()->getUserDetails( $this->get_option( 'token_credentials' ) );
-			} catch ( Exception $e ) {
-				return new WP_Error( 'wp_rest_api_no_user_found', $e->getMessage(), $this->args() );
-			}
-			return $user;
-		}
-
-		/**
-		 * Get WPServer object
-		 *
-		 * @since  0.2.0
-		 *
-		 * @return WPServer
-		 */
-		function get_server() {
-			if ( ! empty( $this->server ) ) {
-				return $this->server;
-			}
-
-			date_default_timezone_set('UTC');
-
-			$this->set_callback_uri( $this->callback_uri ? $this->callback_uri : $this->get_requested_url() );
-
-			$callback_uri = add_query_arg( array(
-				'step' => 'authorize',
-				'auth_key' => $this->key(),
-				'auth_nonce' => wp_create_nonce( md5( __FILE__ ) ),
-			), $this->callback_uri );
-
-			$this->server = new WPServer( array(
-				'identifier'   => $this->client_key,
-				'secret'       => $this->client_secret,
-				'api_root'     => $this->api_url,
-				'auth_urls'    => $this->get_option( 'auth_urls' ),
-				'callback_uri' => $callback_uri,
-			) );
-
-			return $this->server;
+		public function get_company_info() {
+			return apply_filters( 'qbo_connect_get_company', $this->args(), $this );
 		}
 
 		/**
@@ -462,15 +449,7 @@ if ( ! class_exists( 'Zao\QBO_API\OAuth1\Connect' ) ) :
 		 * @return string
 		 */
 		public function key() {
-			try {
-				return $this->store->get_key();
-			} catch ( Exception $e ) {
-				if ( $this->api_url ) {
-					return $this->store->set_key( 'zqbo_apiconnect_' . md5( sanitize_text_field( $this->api_url ) ) );
-				}
-			}
-
-			return '';
+			return $this->store->get_key();
 		}
 
 		/**
@@ -485,17 +464,6 @@ if ( ! class_exists( 'Zao\QBO_API\OAuth1\Connect' ) ) :
 		}
 
 		/**
-		 * Tests whether API discovery has been completed.
-		 *
-		 * @since  0.2.0
-		 *
-		 * @return bool
-		 */
-		public function discovered() {
-			return (bool) $this->get_option( 'auth_urls' );
-		}
-
-		/**
 		 * Get current object data for debugging.
 		 *
 		 * @since  0.2.0
@@ -504,29 +472,15 @@ if ( ! class_exists( 'Zao\QBO_API\OAuth1\Connect' ) ) :
 		 */
 		public function args() {
 			return array(
-				'key'                 => $this->key(),
-				'client_key'          => $this->client_key,
-				'client_secret'       => $this->client_secret,
-				'api_url'             => $this->api_url,
-				'headers'             => $this->headers,
-				'auth_urls'           => $this->get_option( 'auth_urls' ),
-				'callback_uri'        => $this->callback_uri,
-				'access_token'        => $this->access_token,
-				'access_token_secret' => $this->access_token_secret,
-				'endpoint_url'        => $this->endpoint_url,
+				'client_key'    => $this->client_key,
+				'client_secret' => $this->client_secret,
+				'api_url'       => $this->api_url,
+				'auth_urls'     => $this->discovery->auth_urls,
+				'callback_uri'  => $this->callback_uri,
+				'access_token'  => $this->access_token,
+				'refresh_token' => $this->refresh_token,
+				'realm_id'      => $this->realm_id,
 			);
-		}
-
-		/**
-		 * Sets the headers object property
-		 *
-		 * @since 0.2.0
-		 *
-		 * @param string  $value Value to set
-		 */
-		public function set_headers( $headers ) {
-			$this->headers = $headers;
-			return $this->headers;
 		}
 
 		/**
@@ -575,32 +529,6 @@ if ( ! class_exists( 'Zao\QBO_API\OAuth1\Connect' ) ) :
 		public function set_callback_uri( $value ) {
 			$this->callback_uri = $value;
 			return $this->callback_uri;
-		}
-
-		/**
-		 * Sets the endpoint_url object property
-		 *
-		 * @since 0.2.0
-		 *
-		 * @param string  $value Value to set
-		 */
-		public function set_endpoint_url( $value ) {
-			$this->endpoint_url = $value;
-			return $this->endpoint_url;
-		}
-
-		/**
-		 * Set request method
-		 *
-		 * @since 0.1.1
-		 *
-		 * @param string $method Request method
-		 *
-		 * @return string        New request method
-		 */
-		public function set_method( $method ) {
-			$this->method = $method;
-			return $this->method;
 		}
 
 		/**
@@ -659,64 +587,6 @@ if ( ! class_exists( 'Zao\QBO_API\OAuth1\Connect' ) ) :
 		}
 
 		/**
-		 * Perform an authenticated request
-		 *
-		 * @since  0.1.0
-		 *
-		 * @param  string $path         Url endpoint path to resource
-		 * @param  array  $request_args Array of data to send in request.
-		 * @param  string $method       Request method. Defaults to GET
-		 *
-		 * @return object|WP_Error      Updated object, or WP_Error
-		 */
-		public function auth_request( $path, $request_args = array(), $method = 'GET' ) {
-			$this->set_method( $method );
-
-			if ( ! $this->client_key ) {
-				return new WP_Error( 'wp_rest_api_missing_client_data', __( 'Missing client key.', 'qbo-connect' ), $this->args() );
-			}
-
-			if ( ! $this->access_token || ! $this->get_option( 'token_credentials' ) ) {
-				return new WP_Error( 'wp_rest_api_not_authorized', __( 'Authorization has not yet been granted.', 'qbo-connect' ) , $this->args() );
-			}
-
-			$this->endpoint_url = $this->api_url( $path );
-
-			$creds  = $this->get_option( 'token_credentials' );
-			$server = $this->get_server();
-
-			$response = false;
-			try {
-				$response = $server->request( $this->endpoint_url, $creds, array(
-					'request_args' => $request_args,
-					'method'       => $method,
-				) );
-			} catch ( BadResponseException $e ) {
-				$server->response = $e->getResponse();
-				$server->response_code = $server->response->getStatusCode();
-				$body = $server->response->getBody( true );
-			} catch ( Exception $e ) {
-				// @todo maybe use Requests_Exception_HTTP
-				$server->response_code = 'unknown';
-				$body = $server->response = $e->getMessage();
-			}
-
-			if ( ! $response ) {
-				$error = sprintf( __( "Received error [%s] with status code [%s] when making request.", 'qbo-connect' ), $body, $server->response_code );
-				$response = new WP_Error( 'wp_rest_api_response_error', $error );
-			}
-
-			$this->response = $response;
-			$this->response_code = $server->response_code;
-
-			if ( is_wp_error( $response ) ) {
-				return $response;
-			}
-
-			return $this->get_json_if_json( wp_remote_retrieve_body( $response ) );
-		}
-
-		/**
 		 * Get the api_url and append included path
 		 *
 		 * @since  0.1.0
@@ -740,7 +610,7 @@ if ( ! class_exists( 'Zao\QBO_API\OAuth1\Connect' ) ) :
 		 * @return mixed Request URL or error
 		 */
 		function request_token_url() {
-			return $this->get_server()->urlTemporaryCredentials();
+			return $this->discovery->auth_urls->token_endpoint;
 		}
 
 		/**
@@ -751,78 +621,7 @@ if ( ! class_exists( 'Zao\QBO_API\OAuth1\Connect' ) ) :
 		 * @return mixed Authorization URL or error
 		 */
 		function request_authorize_url() {
-			return $this->get_server()->urlAuthorization();
-		}
-
-		/**
-		 * Gets the access URL from the JSON description object
-		 *
-		 * @since  0.1.0
-		 *
-		 * @return mixed Access URL or error
-		 */
-		function request_access_url() {
-			return $this->get_server()->urlTokenCredentials();
-		}
-
-		/**
-		 * Retrieves the API Description object
-		 *
-		 * @since  0.1.0
-		 *
-		 * @return object  Description object for api_url
-		 */
-		public function get_api_description() {
-			if ( ! $this->client_key ) {
-				return new WP_Error( 'wp_rest_api_missing_client_data', __( 'Missing client key.', 'qbo-connect' ), $this->args() );
-			}
-
-			if ( ! $this->json_desc ) {
-				if ( ! $this->cache_api_description_for_api_url() ) {
-					return new WP_Error( 'wp_rest_api_connection_failed_error', __( 'There was a problem connecting to the API URL specified.', 'qbo-connect' ), $this->args() );
-				}
-			}
-			return $this->json_desc;
-		}
-
-		/**
-		 * Fetches and caches the API Description object
-		 *
-		 * @since  0.1.0
-		 *
-		 * @return mixed  Description object for api_url
-		 */
-		public function cache_api_description_for_api_url() {
-			if ( ! isset( $_GET['delete-trans'] ) && $this->json_desc = $this->transient->get() ) {
-				return $this->json_desc;
-			}
-
-			$this->response = wp_remote_get( $this->api_url, array(
-				'headers' => $this->headers,
-			) );
-
-			$body  = wp_remote_retrieve_body( $this->response );
-			$error = false;
-
-			if ( ! $body || ( isset( $this->response['response']['code'] ) && 200 != $this->response['response']['code'] ) ) {
-				$error = sprintf( __( 'Could not retrive body from URL: "%s"', 'qbo-connect' ), $this->api_url );
-
-				$this->update_stored_error( $error );
-
-				if ( defined( 'WP_DEBUG' ) ) {
-					error_log( 'error: '. $error );
-					error_log( 'request args: '. print_r( $this->args(), true ) );
-					error_log( 'request response: '. print_r( $this->response, true ) );
-				}
-			}
-
-			$this->json_desc = $this->is_json( $body );
-
-			if ( ! $error && $this->json_desc ) {
-				$this->transient->set( $this->json_desc );
-			}
-
-			return $this->json_desc;
+			return $this->discovery->auth_urls->authorization_endpoint;
 		}
 
 		/**
@@ -837,13 +636,10 @@ if ( ! class_exists( 'Zao\QBO_API\OAuth1\Connect' ) ) :
 		 * @return mixed           Value of option requested
 		 */
 		public function get_option( $option = 'all' ) {
-			if ( $this->key() ) {
-				try {
-					return $this->store->get( $option );
-				} catch ( Exception $e ) {
-				}
+			try {
+				return $this->store->get( $option );
+			} catch ( Exception $e ) {
 			}
-			return array();
 		}
 
 		/**
@@ -874,7 +670,7 @@ if ( ! class_exists( 'Zao\QBO_API\OAuth1\Connect' ) ) :
 		 */
 		public function delete_option( $option = '' ) {
 			try {
-				$this->transient->delete();
+				$this->discovery->delete_transient();
 				return $this->store->delete( $option );
 			} catch ( Exception $e ) {
 				return false;
@@ -882,7 +678,7 @@ if ( ! class_exists( 'Zao\QBO_API\OAuth1\Connect' ) ) :
 		}
 
 		/**
-		 * Fetches the wp_rest_api_connect_error message.
+		 * Fetches the zqbo_apiconnect_error message.
 		 *
 		 * @since  0.1.3
 		 *
@@ -894,7 +690,7 @@ if ( ! class_exists( 'Zao\QBO_API\OAuth1\Connect' ) ) :
 		}
 
 		/**
-		 * Fetches the wp_rest_api_connect_error request_args.
+		 * Fetches the zqbo_apiconnect_error request_args.
 		 *
 		 * @since  0.1.3
 		 *
@@ -906,30 +702,18 @@ if ( ! class_exists( 'Zao\QBO_API\OAuth1\Connect' ) ) :
 		}
 
 		/**
-		 * Fetches the wp_rest_api_connect_error request_response.
+		 * Fetches the zqbo_apiconnect_error option value.
 		 *
 		 * @since  0.1.3
 		 *
-		 * @return string Stored error request_response value.
-		 */
-		public function get_stored_error_request_response() {
-			$errors = $this->get_stored_error();
-			return isset( $errors['request_response'] ) ? $errors['request_response'] : '';
-		}
-
-		/**
-		 * Fetches the wp_rest_api_connect_error option value.
-		 *
-		 * @since  0.1.3
-		 *
-		 * @return mixed  wp_rest_api_connect_error option value.
+		 * @return mixed  zqbo_apiconnect_error option value.
 		 */
 		public function get_stored_error() {
 			return $this->error_store->get();
 		}
 
 		/**
-		 * Updates/replaces the wp_rest_api_connect_error option.
+		 * Updates/replaces the zqbo_apiconnect_error option.
 		 *
 		 * @since  0.1.3
 		 *
@@ -940,13 +724,12 @@ if ( ! class_exists( 'Zao\QBO_API\OAuth1\Connect' ) ) :
 		public function update_stored_error( $error = '' ) {
 			if ( '' !== $error ) {
 				$this->error_store->set( array(
-					'message'          => is_wp_error( $error ) ? $error->get_error_message() : $error,
-					'request_args'     => print_r( $this->args(), true ),
-					'request_response' => print_r( $this->response, true ),
+					'message'      => is_wp_error( $error ) ? $error->get_error_message() : $error,
+					'request_args' => print_r( $this->args(), true ),
 				) );
 
 				return ! is_wp_error( $error )
-					? new WP_Error( 'wp_rest_api_connect_error', $error, $this->args() )
+					? new WP_Error( 'zqbo_apiconnect_error', $error, $this->args() )
 					: $error;
 			} else {
 				$this->delete_stored_error();
@@ -956,11 +739,11 @@ if ( ! class_exists( 'Zao\QBO_API\OAuth1\Connect' ) ) :
 		}
 
 		/**
-		 * Fetches the wp_rest_api_connect_error option value
+		 * Fetches the zqbo_apiconnect_error option value
 		 *
 		 * @since  0.1.3
 		 *
-		 * @return mixed  wp_rest_api_connect_error option value
+		 * @return mixed  zqbo_apiconnect_error option value
 		 */
 		public function delete_stored_error() {
 			return $this->error_store->delete();
@@ -985,8 +768,8 @@ if ( ! class_exists( 'Zao\QBO_API\OAuth1\Connect' ) ) :
 		 *
 		 * @return mixed  Decoded JSON object or unchanged body
 		 */
-		function get_json_if_json( $body ) {
-			$json = $body ? $this->is_json( $body ) : false;
+		public static function get_json_if_json( $body ) {
+			$json = $body ? self::is_json( $body ) : false;
 			return $body && $json ? $json : $body;
 		}
 
@@ -999,11 +782,38 @@ if ( ! class_exists( 'Zao\QBO_API\OAuth1\Connect' ) ) :
 		 *
 		 * @return boolean|array  Decoded JSON object or false
 		 */
-		function is_json( $string ) {
-			$json = is_string( $string ) ? json_decode( $string ) : false;
+		public static function is_json( $string ) {
+			$json = is_string( $string ) ? self::json_decode( $string ) : false;
 			return $json && ( is_object( $json ) || is_array( $json ) )
 				? $json
 				: false;
+		}
+
+		/**
+		 * Wrapper for json_decode that throws when an error occurs.
+		 * Stolen from GuzzleHttp.
+		 *
+		 * @link  https://github.com/guzzle/guzzle/blob/113071af3b2b9eb96b05dab05472cbaed64a3df4/src/functions.php
+		 *
+		 * @param string $json    JSON data to parse
+		 * @param bool $assoc     When true, returned objects will be converted
+		 *                        into associative arrays.
+		 * @param int    $depth   User specified recursion depth.
+		 * @param int    $options Bitmask of JSON decode options.
+		 *
+		 * @return mixed
+		 * @throws \InvalidArgumentException if the JSON cannot be decoded.
+		 * @link http://www.php.net/manual/en/function.json-decode.php
+		 */
+		public static function json_decode( $json, $assoc = false, $depth = 512, $options = 0 ) {
+			$data = \json_decode( $json, $assoc, $depth, $options );
+			if ( JSON_ERROR_NONE !== json_last_error() ) {
+				throw new \InvalidArgumentException(
+					'json_decode error: ' . json_last_error_msg()
+				);
+			}
+
+			return $data;
 		}
 
 		/**
@@ -1017,22 +827,12 @@ if ( ! class_exists( 'Zao\QBO_API\OAuth1\Connect' ) ) :
 		 */
 		public function __get( $field ) {
 			switch ( $field ) {
-				case 'key':
-				case 'client_key':
-				case 'client_secret':
-				case 'api_url':
-				case 'headers':
-				case 'callback_uri':
-				case 'access_token':
-				case 'access_token_secret':
-				case 'endpoint_url':
-				case 'method':
-					return $this->{$field};
-				case 'token_credentials':
 				case 'auth_urls':
-					return $this->get_option( 'auth_urls' );
+					return $this->discovery->auth_urls;
+				case 'token_credentials':
+					return $this->get_option( $field );
 				default:
-					throw new Exception( 'Invalid property: ' . $field );
+					return $this->{$field};
 			}
 		}
 

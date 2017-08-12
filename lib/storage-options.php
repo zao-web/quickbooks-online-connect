@@ -173,7 +173,8 @@ class Options implements Store_Interface {
 	 */
 	public function set_key( $key ) {
 		$this->key = $key;
-		return $this->key;
+
+		return $this;
 	}
 
 	protected function get_from_db() {

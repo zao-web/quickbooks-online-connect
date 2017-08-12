@@ -6,11 +6,11 @@ require_once 'vendor/autoload.php';
 require_once( 'qbo-connect.php' );
 
 /**
- * Example Zao\QBO_API\OAuth1\Connect usage
+ * Example Zao\QBO_API\Connect usage
  * To test it out, go to your site's WP dashboard:
  * YOURSITE-URL/wp-admin/?api-connect
  */
-function wp_json_api_initiate_sample_connection() {
+function qp_api_initiate_sample_connection() {
 	if ( ! isset( $_GET['api-connect'] ) ) {
 		return;
 	}
@@ -18,20 +18,20 @@ function wp_json_api_initiate_sample_connection() {
 	global $api_connect; // hold this in a global for demonstration purposes.
 
 	// Output our errors/notices in the admin dashboard.
-	add_action( 'all_admin_notices', 'wp_json_api_show_sample_connection_notices' );
+	add_action( 'all_admin_notices', 'qp_api_show_sample_connection_notices' );
 
 	// Get the connect object
-	$api_connect = new Zao\QBO_API\OAuth1\Connect();
+	$api_connect = new Zao\QBO_API\Connect();
 
 	// Consumer credentials
 	$client = array(
-		// Library will 'discover' the API url
-		'api_url'       => 'WP SITE URL TO CONNECT TO',
 		// App credentials set up on the server
 		'client_key'    => 'YOUR CLIENT KEY',
 		'client_secret' => 'YOUR CLIENT SECRET',
 		// Must match stored callback URL setup on server.
 		'callback_uri'  => admin_url() . '?api-connect',
+		// Test in sandbox mode.
+		'sandbox'       => true,
 		// 'autoredirect_authoriziation' => false,
 	);
 
@@ -42,7 +42,7 @@ function wp_json_api_initiate_sample_connection() {
 	 * is not explicitly set to false) you will be auto-redirected to the other site to
 	 * receive authorization.
 	 */
-	$discovery = $api_connect->init( $client );
+	$initiated = $api_connect->init( $client );
 
 	// Remove old errors
 	$api_connect->delete_stored_error();
@@ -54,24 +54,28 @@ function wp_json_api_initiate_sample_connection() {
 	}
 
 	// If oauth discovery failed, the WP_Error object will explain why.
-	if ( is_wp_error( $discovery ) ) {
+	if ( is_wp_error( $initiated ) ) {
 		// Save this error to the library's error storage (to output as admin notice)
-		return $api_connect->update_stored_error( $discovery );
+		return $api_connect->update_stored_error( $initiated );
 	}
 
 	/*
 	 * if autoredirect_authoriziation IS set to false, you'll need to use the
 	 * authorization URL to redirect the user to login for authorization.
 	 */
-	// $authorization_url = $api_connect->get_authorization_url();
-	// if ( ! is_wp_error( $authorization_url ) ) {
-	// 	wp_redirect( $authorization_url );
-	// 	exit();
+	// $authorization_url = $api_connect->get_full_authorization_url();
+	// wp_redirect( $authorization_url );
+	// exit();
+	//
+	// // OR:
+	// $maybe_error = $api_connect->redirect_to_login();
+	// if ( is_wp_error( $maybe_error ) ) {
+	// 	wp_die( $authorization_url->get_error_message(), $authorization_url->get_error_code() );
 	// }
 }
-add_action( 'admin_init', 'wp_json_api_initiate_sample_connection' );
+add_action( 'admin_init', 'qp_api_initiate_sample_connection' );
 
-function wp_json_api_show_sample_connection_notices() {
+function qp_api_show_sample_connection_notices() {
 	global $api_connect;
 
 	/*
@@ -82,7 +86,6 @@ function wp_json_api_show_sample_connection_notices() {
 
 		$message = '<div id="message" class="error"><p><strong>Error Message:</strong> ' . $api_connect->get_stored_error_message() . '</p></div>';
 		$message .= '<div id="message" class="error"><p><strong>Error request arguments:</strong></p><xmp>' . $api_connect->get_stored_error_request_args() . '</xmp></div>';
-		$message .= '<div id="message" class="error"><p><strong>Error request response:</strong></p><xmp>' . $api_connect->get_stored_error_request_response() . '</xmp></div>';
 
 		// Output message, and bail.
 		return print( $message );
@@ -90,53 +93,50 @@ function wp_json_api_show_sample_connection_notices() {
 
 	$reset_button = '<p><a class="button-secondary" href="'. add_query_arg( 'reset-connection', true ) .'">' . __( 'Reset Connection', 'rest-connect-ui' ) . '</a></p>';
 
-	// Get the API Description object from the root API endpoint.
-	// echo '<div id="message" class="updated">';
-	// echo '<xmp>API Description endpoint: '. print_r( $api_connect->get_api_description(), true ) .'</xmp>';
-	// echo '</div>';
+	$company = $api_connect->get_company_info();
 
-	$post_id_to_view = 1;
-	$response = $api_connect->auth_get_request( '/wp/v2/posts/'. $post_id_to_view );
-
-	if ( is_wp_error( $response ) ) {
+	if ( is_wp_error( $company ) ) {
 
 		echo '<div id="message" class="error">';
-		echo wpautop( $response->get_error_message() );
+		echo wpautop( $company->get_error_message() );
 		echo '</div>';
 
 	} else {
 
+		$props = array();
+		foreach ( get_object_vars( $company ) as $prop_name => $prop_value ) {
+			$props[] = '<tr><td>'. print_r( $prop_name, true ) .'</td><td>'. print_r( $prop_value, true ) .'</td></tr>';
+		}
+
 		echo '<div id="message" class="updated">';
-		echo '<p><strong>'. $response->title->rendered .' retrieved!</strong></p>';
-		echo '<xmp>auth_get_request $response: '. print_r( $response, true ) .'</xmp>';
-		// Add a button to reset the connection.
-		echo $reset_button;
+		echo '
+		<table class="wp-list-table widefat">
+			<thead>
+				<tr>
+					<th>' . __( 'Connected Company Name', 'qbo-connect-ui' ) . '</th>
+					<th>' . __( 'Connected Company ID', 'qbo-connect-ui' ) . '</th>
+				</tr>
+			</thead>
+			<tbody>
+				<tr>
+					<td>'. esc_html( $company->CompanyName ) .'</td>
+					<td>'. esc_html( $company->Id ) .'</td>
+				</tr>
+			</tbody>
+		</table>
+		<br>
+		<table class="wp-list-table widefat">
+			<thead>
+				<tr>
+					<th>'. __( 'Company Property:', 'qbo-connect-ui' ) .'</th>
+					<th>'. __( 'Company Property Value:', 'qbo-connect-ui' ) .'</th>
+				</tr>
+			</thead>
+			<tbody>
+				'. implode( "\n", $props ) .'
+			</tbody>
+		</table>
+		';
 		echo '</div>';
-
 	}
-
-	/*
-	 * The following will definitely update post 1!!! Do not uncomment unless
-	 * you're ok with that data loss!
-	 */
-
-	// $post_id_to_update = 1;
-	// $updated_data = array( 'title' => 'Hello REST API World!' );
-	// $response = $api_connect->auth_post_request( '/wp/v2/posts/'. $post_id_to_update, $updated_data );
-
-	// if ( is_wp_error( $response ) ) {
-
-	// 	echo '<div id="message" class="error">';
-	// 	echo wpautop( $response->get_error_message() );
-	// 	echo '</div>';
-
-	// } else {
-
-	// 	echo '<div id="message" class="updated">';
-	// 	echo '<p><strong>Post updated!</strong></p>';
-	// 	echo '<xmp>auth_post_request $response: '. print_r( $response, true ) .'</xmp>';
-	// 	echo $reset_button;
-	// 	echo '</div>';
-
-	// }
 }

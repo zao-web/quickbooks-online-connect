@@ -4,15 +4,22 @@ namespace Zao\QBO_API\Storage;
 use Exception;
 use Zao\QBO_API\Storage\Transient_Interface;
 
+/**
+ * Transient information class. By using options instead of WP transients,
+ * we have more flexibility about when the stale data is replaced
+ * (possibly with an async action).
+ */
 class Transients implements Transient_Interface {
 
 	protected $value = null;
+	protected $expired = false;
 	protected $key = '';
-	protected $expiration = '';
+	protected $expiration = HOUR_IN_SECONDS;
 
-	public function __construct() {
-		// Can this be set outside constructor/function?
-		$this->expiration = HOUR_IN_SECONDS;
+	public function __construct( $key = '' ) {
+		if ( $key ) {
+			$this->set_key( $key );
+		}
 	}
 
 	/**
@@ -22,7 +29,9 @@ class Transients implements Transient_Interface {
 	 */
 	public function get( $force = false ) {
 		if ( null === $this->value || $force ) {
-			$this->value = $this->get_from_db( $this->get_key() );
+			$gotten = $this->get_val_and_expiration( $this->get_key() );
+			$this->value   = $gotten['value'];
+			$this->expired = $gotten['expired'];
 		}
 
 		return $this->value;
@@ -35,7 +44,9 @@ class Transients implements Transient_Interface {
 	 */
 	public function set( $value ) {
 		$this->value = $value;
-		return $this->update_db( $this->get_key(), $this->value, $this->expiration );
+		$this->update_db( $this->get_key() . '_exp', time() + $this->expiration );
+
+		return $this->update_db( $this->get_key(), $this->value );
 	}
 
 	/**
@@ -44,8 +55,14 @@ class Transients implements Transient_Interface {
 	 * @return bool Result of deletion from DB.
 	 */
 	public function delete(){
-		$this->value = null;
-		return $this->delete_from_db( $this->get_key() );
+		$this->delete_from_db( $this->get_key() . '_exp' );
+
+		$result = $this->delete_from_db( $this->get_key() );
+		if ( $result ) {
+			$this->value = null;
+		}
+
+		return $result;
 	}
 
 	/**
@@ -64,7 +81,15 @@ class Transients implements Transient_Interface {
 	 */
 	public function set_key( $key ) {
 		$this->key = $key;
-		return $this->key;
+
+		return $this;
+	}
+
+	/**
+	 * Is the transient value expired
+	 */
+	public function is_expired() {
+		return !! $this->expired;
 	}
 
 	/**
@@ -79,19 +104,36 @@ class Transients implements Transient_Interface {
 	 */
 	public function set_expiration( $expiration ) {
 		$this->expiration = $expiration;
-		return $this->expiration;
+
+		return $this;
+	}
+
+	protected function get_val_and_expiration( $key ) {
+		$value   = $this->get_from_db( $key, 'VALUE_NOT_SET' );
+		$expired = false;
+
+		if ( 'VALUE_NOT_SET' === $value ) {
+			$value = null;
+
+			return compact( 'value', 'expired' );
+		}
+
+		$expiration = $this->get_from_db( $key . '_exp' );
+		$expired = $expiration && $expiration < time();
+
+		return compact( 'value', 'expired' );
 	}
 
 	protected function get_from_db() {
-		return call_user_func_array( 'get_transient', func_get_args() );
+		return call_user_func_array( 'get_option', func_get_args() );
 	}
 
 	protected function delete_from_db() {
-		return call_user_func_array( 'delete_transient', func_get_args() );
+		return call_user_func_array( 'delete_option', func_get_args() );
 	}
 
 	protected function update_db() {
-		return call_user_func_array( 'set_transient', func_get_args() );
+		return call_user_func_array( 'update_option', func_get_args() );
 	}
 
 }
