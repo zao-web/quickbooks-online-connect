@@ -17,13 +17,9 @@
         "source": "https://github.com/zao-web/qbo-connect"
     },
     "require": {
-        "php": ">5.3",
-        "league/oauth1-client": "^1.6"
+        "php": ">5.3"
     },
     "autoload": {
-        "psr-4": {
-            "WP_REST\\ExampleClient\\": "lib/"
-        },
         "classmap": ["lib"]
     }
 }
