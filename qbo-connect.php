@@ -6,7 +6,9 @@ use WP_Error;
 
 if ( ! class_exists( 'Zao\QBO_API\Connect' ) ) :
 
-	require_once 'vendor/autoload.php';
+	if ( file_exists( 'vendor/autoload.php' ) ) {
+		require_once 'vendor/autoload.php';
+	}
 
 	/**
 	 * Connect to Quickbooks via OAuth
