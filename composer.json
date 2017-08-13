@@ -1,6 +1,6 @@
 {
     "name": "zao-web/qbo-connect",
-    "description": "Helper class for connecting from one WordPress installation to another via the WordPress REST API and OAuth.",
+    "description": "Helper class for connecting to Quickbooks Online over OAuth.",
     "license": "GPL-2.0+",
     "authors": [
         {
