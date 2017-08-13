@@ -1,11 +1,12 @@
 <?php
-
 namespace Zao\QBO_API;
 
 use Exception;
 use WP_Error;
 
 if ( ! class_exists( 'Zao\QBO_API\Connect' ) ) :
+
+	require_once 'vendor/autoload.php';
 
 	/**
 	 * Connect to Quickbooks via OAuth
@@ -38,13 +39,14 @@ if ( ! class_exists( 'Zao\QBO_API\Connect' ) ) :
 		protected $refresh_token  = '';
 		protected $realm_id       = '';
 		protected $is_authorizing = null;
+		protected $initiated      = false;
 		protected $autoredirect_authoriziation = true;
 		protected $discovery;
 
 		/**
 		 * Connect object constructor.
 		 *
-		 * @since 0.2.0
+		 * @since 0.1.0
 		 *
 		 * @param array $storage_classes (optional) override the storage classes.
 		 */
@@ -67,7 +69,7 @@ if ( ! class_exists( 'Zao\QBO_API\Connect' ) ) :
 		/**
 		 * Instantiates the storage objects for the options and transients.
 		 *
-		 * @since  0.2.0
+		 * @since  0.1.0
 		 *
 		 * @param  Storage\Store_Interface $store       Option storage
 		 * @param  Storage\Store_Interface $error_store Error option storage
@@ -101,9 +103,9 @@ if ( ! class_exists( 'Zao\QBO_API\Connect' ) ) :
 
 			$this->set_object_properties();
 
-			$this->api_url => $this->sandbox
+			$this->api_url = $this->sandbox
 				? 'https://sandbox-quickbooks.api.intuit.com/'
-				: 'https://quickbooks.api.intuit.com/',
+				: 'https://quickbooks.api.intuit.com/';
 
 			$this->discovery
 				->set_sandbox( $this->sandbox )
@@ -118,14 +120,16 @@ if ( ! class_exists( 'Zao\QBO_API\Connect' ) ) :
 				return $error;
 			}
 
+			$this->initiated = true;
+
 			// Ok, initiation is complete and successful.
-			return true;
+			return $this->initiated;
 		}
 
 		/**
 		 * Get the options from the DB and set the object properties.
 		 *
-		 * @since 0.2.0
+		 * @since 0.1.0
 		 */
 		public function set_object_properties() {
 			foreach ( $this->get_option() as $property => $value ) {
@@ -147,7 +151,7 @@ if ( ! class_exists( 'Zao\QBO_API\Connect' ) ) :
 		/**
 		 * Get the authorization (login) URL for the server with configured redirect.
 		 *
-		 * @since  0.2.0
+		 * @since  0.1.0
 		 *
 		 * @return string|WP_Error Authorization URL or WP_Error.
 		 */
@@ -178,7 +182,7 @@ if ( ! class_exists( 'Zao\QBO_API\Connect' ) ) :
 		/**
 		 * Check if the authorization callback has been initiated.
 		 *
-		 * @since  0.2.0
+		 * @since  0.1.0
 		 *
 		 * @return boolean
 		 */
@@ -251,7 +255,7 @@ if ( ! class_exists( 'Zao\QBO_API\Connect' ) ) :
 		 * If autoredirect is enabled, and we are not yet authorized,
 		 * redirect to the server to get authorization.
 		 *
-		 * @since  0.2.0
+		 * @since  0.1.0
 		 *
 		 * @return bool|WP_Error  WP_Error is an issue, else redirects.
 		 */
@@ -270,7 +274,7 @@ if ( ! class_exists( 'Zao\QBO_API\Connect' ) ) :
 		/**
 		 * Do the redirect to the authorization (login) URL.
 		 *
-		 * @since  0.2.0
+		 * @since  0.1.0
 		 *
 		 * @return mixed  WP_Error if authorization URL lookup fails.
 		 */
@@ -293,7 +297,7 @@ if ( ! class_exists( 'Zao\QBO_API\Connect' ) ) :
 		/**
 		 * Exchange refresh token.
 		 *
-		 * @since  0.2.0
+		 * @since  0.1.0
 		 *
 		 * @return mixed WP_Error if failure, else true
 		 */
@@ -330,7 +334,7 @@ if ( ! class_exists( 'Zao\QBO_API\Connect' ) ) :
 		 * After the app receives the authorization code,
 		 * it exchanges the authorization code for refresh and access tokens.
 		 *
-		 * @since  0.2.0
+		 * @since  0.1.0
 		 *
 		 * @param  string  $auth_code
 		 * @return mixed   WP_Error if failure, else redirect to callback_uri.
@@ -413,20 +417,38 @@ if ( ! class_exists( 'Zao\QBO_API\Connect' ) ) :
 		}
 
 		/**
-		 * Get's authorized user. Useful for testing authenticated connection.
+		 * Get's a QuickBooksOnline\API\DataService\DataService object wrapper.
 		 *
-		 * @since  0.2.0
+		 * @since  0.1.0
 		 *
-		 * @return mixed  User object or WP_Error object.
+		 * @return Service
+		 */
+		public function get_qb_data_service() {
+			return new Service( array(
+				'ClientID'        => $this->client_key,
+				'ClientSecret'    => $this->client_secret,
+				'accessTokenKey'  => $this->access_token,
+				'refreshTokenKey' => $this->refresh_token,
+				'QBORealmID'      => $this->realm_id,
+				'baseUrl'         => $this->api_url,
+			) );
+		}
+
+		/**
+		 * Get's authorized company. Useful for testing authenticated connection.
+		 *
+		 * @since  0.1.0
+		 *
+		 * @return mixed Company object or WP_Error object.
 		 */
 		public function get_company_info() {
-			return apply_filters( 'qbo_connect_get_company', $this->args(), $this );
+			return $this->get_qb_data_service()->get_company_info();
 		}
 
 		/**
 		 * Get the current URL
 		 *
-		 * @since  0.2.0
+		 * @since  0.1.0
 		 *
 		 * @return string current URL
 		 */
@@ -442,20 +464,9 @@ if ( ! class_exists( 'Zao\QBO_API\Connect' ) ) :
 		}
 
 		/**
-		 * Get the stored-data key
-		 *
-		 * @since  0.2.0
-		 *
-		 * @return string
-		 */
-		public function key() {
-			return $this->store->get_key();
-		}
-
-		/**
 		 * Tests whether connection has been created.
 		 *
-		 * @since  0.2.0
+		 * @since  0.1.0
 		 *
 		 * @return bool
 		 */
@@ -466,7 +477,7 @@ if ( ! class_exists( 'Zao\QBO_API\Connect' ) ) :
 		/**
 		 * Get current object data for debugging.
 		 *
-		 * @since  0.2.0
+		 * @since  0.1.0
 		 *
 		 * @return array
 		 */
@@ -484,33 +495,9 @@ if ( ! class_exists( 'Zao\QBO_API\Connect' ) ) :
 		}
 
 		/**
-		 * Sets the client_key object property
-		 *
-		 * @since 0.2.0
-		 *
-		 * @param string  $value Value to set
-		 */
-		public function set_client_key( $value ) {
-			$this->client_key = $value;
-			return $this->client_key;
-		}
-
-		/**
-		 * Sets the client_secret object property
-		 *
-		 * @since 0.2.0
-		 *
-		 * @param string  $value Value to set
-		 */
-		public function set_client_secret( $value ) {
-			$this->client_secret = $value;
-			return $this->client_secret;
-		}
-
-		/**
 		 * Sets the api_url object property
 		 *
-		 * @since 0.2.0
+		 * @since 0.1.0
 		 *
 		 * @param string  $value Value to set
 		 */
@@ -522,68 +509,13 @@ if ( ! class_exists( 'Zao\QBO_API\Connect' ) ) :
 		/**
 		 * Sets the callback_uri object property
 		 *
-		 * @since 0.2.0
+		 * @since 0.1.0
 		 *
 		 * @param string  $value Value to set
 		 */
 		public function set_callback_uri( $value ) {
 			$this->callback_uri = $value;
 			return $this->callback_uri;
-		}
-
-		/**
-		 * Perform an authenticated GET request
-		 *
-		 * @since  0.1.0
-		 *
-		 * @param  string $path    Url endpoint path to resource
-		 * @param  array  $data    Array of data to send in request.
-		 *
-		 * @return object|WP_Error Updated object, or WP_Error
-		 */
-		public function auth_get_request( $path, $data = array() ) {
-			return $this->auth_request( $path, (array) $data, 'GET' );
-		}
-
-		/**
-		 * Perform an authenticated POST request
-		 *
-		 * @since  0.1.0
-		 *
-		 * @param  string $path    Url endpoint path to resource
-		 * @param  array  $data    Array of data to send in request.
-		 *
-		 * @return object|WP_Error Updated object, or WP_Error
-		 */
-		public function auth_post_request( $path, $data = array() ) {
-			return $this->auth_request( $path, (array) $data, 'POST' );
-		}
-
-		/**
-		 * Perform an authenticated HEAD request
-		 *
-		 * @since  0.1.0
-		 *
-		 * @param  string $path    Url endpoint path to resource
-		 * @param  array  $data    Array of data to send in request.
-		 *
-		 * @return object|WP_Error Updated object, or WP_Error
-		 */
-		public function auth_head_request( $path, $data = array() ) {
-			return $this->auth_request( $path, (array) $data, 'HEAD' );
-		}
-
-		/**
-		 * Perform an authenticated DELETE request
-		 *
-		 * @since  0.1.0
-		 *
-		 * @param  string $path    Url endpoint path to resource
-		 *
-		 * @return object|WP_Error Updated object, or WP_Error
-		 */
-		public function auth_delete_request( $path, $data = array() ) {
-			return $this->auth_request( $path, (array) $data, 'DELETE' );
 		}
 
 		/**
@@ -636,10 +568,7 @@ if ( ! class_exists( 'Zao\QBO_API\Connect' ) ) :
 		 * @return mixed           Value of option requested
 		 */
 		public function get_option( $option = 'all' ) {
-			try {
-				return $this->store->get( $option );
-			} catch ( Exception $e ) {
-			}
+			return $this->store->get( $option );
 		}
 
 		/**
@@ -654,33 +583,25 @@ if ( ! class_exists( 'Zao\QBO_API\Connect' ) ) :
 		 * @return                 Original $value if successful
 		 */
 		public function update_option( $option, $value, $set = true ) {
-			try {
-				return $this->store->update( $value, $option, '', $set );
-			} catch ( Exception $e ) {
-				return false;
-			}
+			return $this->store->update( $value, $option, '', $set );
 		}
 
 		/**
 		 * Handles deleting the stored data for a connection
 		 *
-		 * @since  0.1.3
+		 * @since  0.1.0
 		 *
 		 * @return bool  Result of delete_option
 		 */
 		public function delete_option( $option = '' ) {
-			try {
-				$this->discovery->delete_transient();
-				return $this->store->delete( $option );
-			} catch ( Exception $e ) {
-				return false;
-			}
+			$this->discovery->delete_transient();
+			return $this->store->delete( $option );
 		}
 
 		/**
 		 * Fetches the zqbo_apiconnect_error message.
 		 *
-		 * @since  0.1.3
+		 * @since  0.1.0
 		 *
 		 * @return string Stored error message value.
 		 */
@@ -692,7 +613,7 @@ if ( ! class_exists( 'Zao\QBO_API\Connect' ) ) :
 		/**
 		 * Fetches the zqbo_apiconnect_error request_args.
 		 *
-		 * @since  0.1.3
+		 * @since  0.1.0
 		 *
 		 * @return string Stored error request_args value.
 		 */
@@ -704,7 +625,7 @@ if ( ! class_exists( 'Zao\QBO_API\Connect' ) ) :
 		/**
 		 * Fetches the zqbo_apiconnect_error option value.
 		 *
-		 * @since  0.1.3
+		 * @since  0.1.0
 		 *
 		 * @return mixed  zqbo_apiconnect_error option value.
 		 */
@@ -715,7 +636,7 @@ if ( ! class_exists( 'Zao\QBO_API\Connect' ) ) :
 		/**
 		 * Updates/replaces the zqbo_apiconnect_error option.
 		 *
-		 * @since  0.1.3
+		 * @since  0.1.0
 		 *
 		 * @param  string  $error Error message
 		 *
@@ -741,7 +662,7 @@ if ( ! class_exists( 'Zao\QBO_API\Connect' ) ) :
 		/**
 		 * Fetches the zqbo_apiconnect_error option value
 		 *
-		 * @since  0.1.3
+		 * @since  0.1.0
 		 *
 		 * @return mixed  zqbo_apiconnect_error option value
 		 */
@@ -752,7 +673,7 @@ if ( ! class_exists( 'Zao\QBO_API\Connect' ) ) :
 		/**
 		 * Deletes all stored data for this connection.
 		 *
-		 * @since  0.2.0
+		 * @since  0.1.0
 		 */
 		public function reset_connection() {
 			$deleted = $this->delete_option();
@@ -762,7 +683,7 @@ if ( ! class_exists( 'Zao\QBO_API\Connect' ) ) :
 		/**
 		 * Determines if a string is JSON, and if so, decodes it and returns it. Else returns unchanged body object.
 		 *
-		 * @since  0.1.2
+		 * @since  0.1.0
 		 *
 		 * @param  string $body   HTTP retrieved body
 		 *

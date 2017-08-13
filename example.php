@@ -1,7 +1,5 @@
 <?php
 // Make sure you run `composer install`!
-require_once 'vendor/autoload.php';
-
 // include the library.
 require_once( 'qbo-connect.php' );
 

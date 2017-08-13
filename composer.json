@@ -17,7 +17,8 @@
         "source": "https://github.com/zao-web/qbo-connect"
     },
     "require": {
-        "php": ">5.3"
+        "php": ">5.3",
+        "quickbooks/v3-php-sdk" : "^3.3"
     },
     "autoload": {
         "classmap": ["lib"]
