@@ -5,6 +5,12 @@ use QuickBooksOnline\API\DataService\DataService;
 use Exception;
 use WP_Error;
 
+/**
+ * Docs:
+ * API: https://developer.intuit.com/docs/api/
+ * API Sample Code: https://github.com/IntuitDeveloperRelations/SampleCodeSnippets/tree/master/APISampleCode/V3QBO
+ * SDK Docs: https://github.com/intuit/QuickBooks-V3-PHP-SDK/blob/master/README.md
+ */
 class Service {
 
 	protected $service = null;
@@ -27,12 +33,16 @@ class Service {
 	 *
 	 * @since  0.1.0
 	 *
+	 * @param  $reset
 	 * @return QuickBooksOnline\API\DataService\DataService
 	 */
-	public function get_service() {
-		if ( null === $this->service ) {
+	public function get_service( $reset = false ) {
+		if ( null === $this->service || $reset ) {
 			$this->service = DataService::Configure( $this->args );
-			$this->service->setLogLocation( dirname( ini_get( 'error_log' ) ) );
+			$location = apply_filters( 'zao_qbo_api_connect_log_location', '' );
+			if ( $location ) {
+				$this->service->setLogLocation( $location );
+			}
 		}
 
 		return $this->service;
@@ -51,7 +61,7 @@ class Service {
 
 				return new WP_Error(
 					'wc_qbo_integration_company_fail',
-					__( 'Could not find the Quickbooks company.', 'zwqoi' ),
+					__( 'Could not find the Quickbooks company.', 'qbo-connect' ),
 					$error
 				);
 			}
@@ -61,10 +71,83 @@ class Service {
 		} catch ( Exception $e ) {
 			return new WP_Error(
 				'wc_qbo_integration_company_fail',
-				__( 'Could not find the Quickbooks company.', 'zwqoi' ),
+				__( 'Could not find the Quickbooks company.', 'qbo-connect' ),
 				$e
 			);
 		}
+	}
+
+	public function __call( $method, $args ) {
+		$to_call = array( $this->get_service(), $method );
+		if ( 0 === strpos( $method, 'create_' ) ) {
+			$facade_class = $this->get_facade_class_from_method( 'create_', $method );
+			if ( $facade_class ) {
+				$to_call = array( $this, 'facade_create' );
+				$args = array( $facade_class, $args );
+			}
+		} elseif ( 0 === strpos( $method, 'update_' ) ) {
+			$facade_class = $this->get_facade_class_from_method( 'update_', $method );
+			if ( $facade_class ) {
+				$to_call = array( $this, 'facade_update' );
+				$args = array( $facade_class, $args );
+			}
+		}
+
+		$result = call_user_func_array( $to_call, $args );
+
+		if ( $this->check_if_needing_to_refresh_token() ) {
+			$refreshed = $this->refresh_token( $method );
+			if ( $refreshed ) {
+				$result = call_user_func_array( $to_call, $args );
+			}
+		}
+
+		return $result;
+	}
+
+	protected function facade_create( $facade_class, $args) {
+		$created_obj = call_user_func_array( array( $facade_class, 'create' ), $args );
+
+		return array( $created_obj, $this->get_service()->Add( $created_obj ) );
+	}
+
+	protected function facade_update( $facade_class, $args ) {
+		$updated_obj = call_user_func_array( array( $facade_class, 'update' ), $args );
+
+		return array( $updated_obj, $this->get_service()->Add( $updated_obj ) );
+	}
+
+	public function get_facade_class_from_method( $prefix, $method ) {
+		return $this->is_facade_class(
+			ucfirst( str_replace( $prefix, '', $method ) )
+		);
+	}
+
+	public function is_facade_class( $facade_class ) {
+		$facade_class = '\\QuickBooksOnline\\API\\Facades\\' . $facade_class;
+
+		return class_exists( $facade_class ) ? $facade_class : false;
+	}
+
+	public function check_if_needing_to_refresh_token() {
+		$error = $this->get_service()->getLastError();
+
+		return $error
+			&& is_callable( array( $error, 'getHttpStatusCode' ) )
+			&& 401 === $error->getHttpStatusCode();
+	}
+
+	public function refresh_token( $method = '' ) {
+		$token = apply_filters( 'zao_qbo_api_connect_refresh_token', false );
+
+		if ( ! isset( $token['access_token'], $token['refresh_token'] ) ) {
+			return false;
+		}
+
+		$this->args['accessTokenKey']  = $token['access_token'];
+		$this->args['refreshTokenKey'] = $token['refresh_token'];
+
+		return $this->get_service( true );
 	}
 
 }
