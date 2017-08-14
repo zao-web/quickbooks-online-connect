@@ -126,6 +126,9 @@ if ( ! class_exists( 'Zao\QBO_API\Connect' ) ) :
 
 			$this->initiated = true;
 
+			// Provides a way to get the connect object once initated.
+			do_action( 'qbo_connect_initiated', $this );
+
 			// Ok, initiation is complete and successful.
 			return $this->initiated;
 		}
