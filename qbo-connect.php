@@ -66,6 +66,8 @@ if ( ! class_exists( 'Zao\QBO_API\Connect' ) ) :
 			$this->discovery = new Discover(
 				new $storage_classes['transients_class']()
 			);
+
+			add_filter( 'zao_qbo_api_connect_refresh_token', array( $this, 'request_refresh_token' ) );
 		}
 
 		/**
