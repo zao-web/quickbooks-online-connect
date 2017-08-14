@@ -424,25 +424,7 @@ if ( ! class_exists( 'Zao\QBO_API\Connect' ) ) :
 		}
 
 		/**
-		 * Get's a QuickBooksOnline\API\DataService\DataService object wrapper.
-		 *
-		 * @since  0.1.0
-		 *
-		 * @return Service
-		 */
-		public function get_qb_data_service() {
-			return new Service( array(
-				'ClientID'        => $this->client_key,
-				'ClientSecret'    => $this->client_secret,
-				'accessTokenKey'  => $this->access_token,
-				'refreshTokenKey' => $this->refresh_token,
-				'QBORealmID'      => $this->realm_id,
-				'baseUrl'         => $this->api_url,
-			) );
-		}
-
-		/**
-		 * Get's authorized company. Useful for testing authenticated connection.
+		 * Gets authorized company. Useful for testing authenticated connection.
 		 *
 		 * @since  0.1.0
 		 *
@@ -450,6 +432,36 @@ if ( ! class_exists( 'Zao\QBO_API\Connect' ) ) :
 		 */
 		public function get_company_info() {
 			return $this->get_qb_data_service()->get_company_info();
+		}
+
+		/**
+		 * Gets a QuickBooksOnline\API\DataService\DataService object wrapper.
+		 *
+		 * @since  0.1.0
+		 *
+		 * @return Service
+		 */
+		public function get_qb_data_service() {
+			return new Service( $this->get_qb_data_service_args() );
+		}
+
+		/**
+		 * Gets the arguments necessary for the
+		 * QuickBooksOnline\API\DataService\DataService construct.
+		 *
+		 * @since  0.1.0
+		 *
+		 * @return Service
+		 */
+		public function get_qb_data_service_args() {
+			return array(
+				'ClientID'        => $this->client_key,
+				'ClientSecret'    => $this->client_secret,
+				'accessTokenKey'  => $this->access_token,
+				'refreshTokenKey' => $this->refresh_token,
+				'QBORealmID'      => $this->realm_id,
+				'baseUrl'         => $this->api_url,
+			);
 		}
 
 		/**
