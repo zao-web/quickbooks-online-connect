@@ -48,7 +48,15 @@ class Service {
 		return $this->service;
 	}
 
+	public function query( $query ) {
+		return $this->call_or_refresh_token( array( $this->get_service(), 'Query' ), array( $query ) );
+	}
+
 	public function get_company_info() {
+		return $this->call_or_refresh_token( array( $this, '_get_company_info' ) );
+	}
+
+	protected function _get_company_info() {
 		try {
 
 			$company_info = $this->get_service()->getCompanyInfo();
@@ -93,14 +101,7 @@ class Service {
 			}
 		}
 
-		$result = call_user_func_array( $to_call, $args );
-
-		if ( $this->check_if_needing_to_refresh_token() ) {
-			$refreshed = $this->refresh_token( $method );
-			if ( $refreshed ) {
-				$result = call_user_func_array( $to_call, $args );
-			}
-		}
+		$result = $this->call_or_refresh_token( $to_call, $args );
 
 		return $result;
 	}
@@ -129,6 +130,25 @@ class Service {
 		return class_exists( $facade_class ) ? $facade_class : false;
 	}
 
+	public function call_or_refresh_token( $to_call, $args = null ) {
+		$result = $this->_call( $to_call, $args );
+
+		if ( $this->check_if_needing_to_refresh_token() ) {
+			$refreshed = $this->refresh_token();
+			if ( $refreshed ) {
+				$result = $this->_call( $to_call, $args );
+			}
+		}
+
+		return $result;
+	}
+
+	public function _call( $to_call, $args = null ) {
+		return ! is_array( $args )
+			? call_user_func( $to_call )
+			: call_user_func_array( $to_call, $args );
+	}
+
 	public function check_if_needing_to_refresh_token() {
 		$error = $this->get_service()->getLastError();
 
@@ -137,15 +157,15 @@ class Service {
 			&& 401 === $error->getHttpStatusCode();
 	}
 
-	public function refresh_token( $method = '' ) {
+	public function refresh_token() {
 		$token = apply_filters( 'zao_qbo_api_connect_refresh_token', false );
 
-		if ( ! isset( $token['access_token'], $token['refresh_token'] ) ) {
+		if ( ! isset( $token->access_token, $token->refresh_token ) ) {
 			return false;
 		}
 
-		$this->args['accessTokenKey']  = $token['access_token'];
-		$this->args['refreshTokenKey'] = $token['refresh_token'];
+		$this->args['accessTokenKey']  = $token->access_token;
+		$this->args['refreshTokenKey'] = $token->refresh_token;
 
 		return $this->get_service( true );
 	}
