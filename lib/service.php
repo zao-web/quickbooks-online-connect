@@ -131,19 +131,19 @@ class Service {
 	}
 
 	public function call_or_refresh_token( $to_call, $args = null ) {
-		$result = $this->_call( $to_call, $args );
+		$result = $this->call_func( $to_call, $args );
 
 		if ( $this->check_if_needing_to_refresh_token() ) {
 			$refreshed = $this->refresh_token();
 			if ( $refreshed ) {
-				$result = $this->_call( $to_call, $args );
+				$result = $this->call_func( $to_call, $args );
 			}
 		}
 
 		return $result;
 	}
 
-	public function __call( $to_call, $args = null ) {
+	public function call_func( $to_call, $args = null ) {
 		return ! is_array( $args )
 			? call_user_func( $to_call )
 			: call_user_func_array( $to_call, $args );
