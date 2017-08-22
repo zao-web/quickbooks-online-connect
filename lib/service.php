@@ -143,7 +143,7 @@ class Service {
 		return $result;
 	}
 
-	public function _call( $to_call, $args = null ) {
+	public function __call( $to_call, $args = null ) {
 		return ! is_array( $args )
 			? call_user_func( $to_call )
 			: call_user_func_array( $to_call, $args );
