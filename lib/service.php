@@ -2,6 +2,7 @@
 namespace Zao\QBO_API;
 
 use QuickBooksOnline\API\DataService\DataService;
+use QuickBooksOnline\API\Data;
 use Exception;
 use WP_Error;
 
@@ -50,6 +51,25 @@ class Service {
 
 	public function query( $query ) {
 		return $this->call_or_refresh_token( array( $this->get_service(), 'Query' ), array( $query ) );
+	}
+
+	public function get_preferences() {
+		return $this->call_or_refresh_token( array( $this, '_get_preferences' ) );
+	}
+
+	protected function _get_preferences() {
+		$preferences = $this->get_service()->FindById( new Data\IPPPreferences );
+		$error       = $this->get_service()->getLastError();
+
+		if ( $error ) {
+			return new WP_Error(
+				'wc_qbo_integration_preferences_fail',
+				__( 'Could not find the Quickbooks preferences.', 'qbo-connect' ),
+				$error
+			);
+		}
+
+		return $preferences;
 	}
 
 	public function get_company_info() {
