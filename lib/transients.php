@@ -2,14 +2,14 @@
 namespace Zao\QBO_API\Storage;
 
 use Exception;
-use Zao\QBO_API\Storage\Transient_Interface;
+use Zao\QBO_API\Storage\Transient_Store_Interface;
 
 /**
  * Transient information class. By using options instead of WP transients,
  * we have more flexibility about when the stale data is replaced
  * (possibly with an async action).
  */
-class Transients implements Transient_Interface {
+class Transients implements Transient_Store_Interface {
 
 	protected $value = null;
 	protected $expired = false;
