@@ -40,6 +40,14 @@ class Service {
 	public function get_service( $reset = false ) {
 		if ( null === $this->service || $reset ) {
 			$this->service = DataService::Configure( $this->args );
+
+			/**
+			 * Set the QuickBooks SDK directory for request and response logs.
+			 *
+			 * @since 0.1.0
+			 *
+			 * @param string $location The log directory absolute path. Defaults to not logging (no path).
+			 */
 			$location = apply_filters( 'zao_qbo_api_connect_log_location', '' );
 			if ( $location ) {
 				$this->service->setLogLocation( $location );
@@ -178,6 +186,8 @@ class Service {
 	}
 
 	public function refresh_token() {
+		// Make a request for a refresh token.
+		// See Zao\QBO_API/Connect::request_refresh_token()
 		$token = apply_filters( 'zao_qbo_api_connect_refresh_token', false );
 
 		if ( ! isset( $token->access_token, $token->refresh_token ) ) {

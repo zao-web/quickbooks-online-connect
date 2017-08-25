@@ -173,6 +173,11 @@ if ( ! class_exists( 'Zao\QBO_API\Connect' ) ) :
 				new $storage_classes['transients_class']()
 			);
 
+			/**
+			 * Provides method for refreshing the API token.
+			 *
+			 * @since 0.1.0
+			 */
 			add_filter( 'zao_qbo_api_connect_refresh_token', array( $this, 'request_refresh_token' ) );
 		}
 
@@ -232,7 +237,13 @@ if ( ! class_exists( 'Zao\QBO_API\Connect' ) ) :
 
 			$this->initiated = true;
 
-			// Provides a way to get the connect object once initated.
+			/**
+			 * Provides a method for accesing connect object once initated.
+			 *
+			 * @since 0.1.0
+			 *
+			 * @param Zao\QBO_API\Connect $api The API connect object.
+			 */
 			do_action( 'qbo_connect_initiated', $this );
 
 			// Ok, initiation is complete and successful.

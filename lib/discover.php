@@ -4,21 +4,31 @@ namespace Zao\QBO_API;
 class Discover {
 
 	const SANDBOX_DISCOVERY_URL = 'https://developer.api.intuit.com/.well-known/openid_sandbox_configuration';
-	const DISCOVERY_URL     = 'https://developer.api.intuit.com/.well-known/openid_configuration';
+	const DISCOVERY_URL         = 'https://developer.api.intuit.com/.well-known/openid_configuration';
 
+	/**
+	 * Fallback authentication endpoints, which will be overridden by the discovery request.
+	 *
+	 * @var array
+	 */
 	protected $auth_urls = array(
-		'issuer'                   => 'https://oauth.platform.intuit.com/op/v1',
-		'authorization_endpoint'   => 'https://appcenter.intuit.com/connect/oauth2',
-		'token_endpoint'           => 'https://oauth.platform.intuit.com/oauth2/v1/tokens/bearer',
-		'userinfo_endpoint'        => 'https://sandbox-accounts.platform.intuit.com/v1/openid_connect/userinfo',
-		'revocation_endpoint'      => 'https://developer.api.intuit.com/v2/oauth2/tokens/revoke',
-		'jwks_uri'                 => 'https://oauth.platform.intuit.com/op/v1/jwks',
+		'issuer'                 => 'https://oauth.platform.intuit.com/op/v1',
+		'authorization_endpoint' => 'https://appcenter.intuit.com/connect/oauth2',
+		'token_endpoint'         => 'https://oauth.platform.intuit.com/oauth2/v1/tokens/bearer',
+		'userinfo_endpoint'      => 'https://sandbox-accounts.platform.intuit.com/v1/openid_connect/userinfo',
+		'revocation_endpoint'    => 'https://developer.api.intuit.com/v2/oauth2/tokens/revoke',
+		'jwks_uri'               => 'https://oauth.platform.intuit.com/op/v1/jwks',
 	);
 
+	/**
+	 * Whether client is in sandbox (developer testing) mode. Defaults to true.
+	 *
+	 * @var boolean
+	 */
 	protected $sandbox = true;
 
 	/**
-	 * Transients Store
+	 * Transient data store
 	 *
 	 * @var Storage\Transient_Store_Interface
 	 */
@@ -48,7 +58,7 @@ class Discover {
 				: self::DISCOVERY_URL;
 
 			$gotten = wp_remote_get( $url );
-			$code = wp_remote_retrieve_response_code( $gotten );
+			$code   = wp_remote_retrieve_response_code( $gotten );
 
 			if ( 200 === $code ) {
 				try {

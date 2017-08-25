@@ -145,9 +145,17 @@ class Options implements Store_Interface {
 		if ( ! empty( $isset ) ) {
 			$updated = $this->update_db( $this->get_key(), $this->option );
 		} else {
-			// May want this to be true if using these connections on most page-loads.
-			// But likely authenticated requests are used sparingly
-			if ( apply_filters( 'rest_connect_autoload_options', $this->do_autoload, $this->get_key() ) ) {
+
+			/**
+			 * May want this to be true if using these connections on most page-load,
+			 * but likely authenticated requests are used sparingly
+			 *
+			 * @since 0.1.0
+			 *
+			 * @param string $do_autoload Whether to set the autoload flag for the option. Defaults to false.
+			 * @param string $option_key  The option key.
+			 */
+			if ( apply_filters( 'zao_qbo_api_connect_autoload_options', $this->do_autoload, $this->get_key() ) ) {
 				$updated = $this->update_db( $this->get_key(), $this->option );
 			} else {
 				$updated = $this->add_db( $this->get_key(), $this->option, '', 'no' );
