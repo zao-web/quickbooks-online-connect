@@ -135,7 +135,7 @@ class Service {
 	protected function facade_update( $facade_class, $args ) {
 		$updated_obj = call_user_func_array( array( $facade_class, 'update' ), $args );
 
-		return array( $updated_obj, $this->get_service()->Add( $updated_obj ) );
+		return array( $updated_obj, $this->get_service()->Update( $updated_obj ) );
 	}
 
 	public function get_facade_class_from_method( $prefix, $method ) {
