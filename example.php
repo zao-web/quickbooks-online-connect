@@ -24,7 +24,7 @@ function qp_api_initiate_sample_connection() {
 	// Consumer credentials
 	$client = array(
 		// App credentials set up on the server
-		'client_key'    => 'YOUR CLIENT KEY',
+		'client_id'     => 'YOUR CLIENT KEY',
 		'client_secret' => 'YOUR CLIENT SECRET',
 		// Must match stored callback URL setup on server.
 		'callback_uri'  => admin_url() . '?api-connect',

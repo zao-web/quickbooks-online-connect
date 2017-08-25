@@ -11,7 +11,12 @@ if ( ! class_exists( 'Zao\QBO_API\Connect' ) ) :
 	}
 
 	/**
-	 * Connect to Quickbooks via OAuth
+	 * Connect to Quickbooks via OAuth 2.0
+	 *
+	 * Docs:
+	 * API: https://developer.intuit.com/docs/api/
+	 * API Sample Code: https://github.com/IntuitDeveloperRelations/SampleCodeSnippets/tree/master/APISampleCode/V3QBO
+	 * SDK Docs: https://github.com/intuit/QuickBooks-V3-PHP-SDK/blob/master/README.md
 	 *
 	 * @author  Justin Sternberg <jt@zao.is>
 	 * @package Connect
@@ -25,25 +30,126 @@ if ( ! class_exists( 'Zao\QBO_API\Connect' ) ) :
 		const VERSION = '0.1.0';
 
 		/**
-		 * Options Store
+		 * Option storage
 		 *
 		 * @var Storage\Store_Interface
 		 */
 		protected $store;
 
-		protected $client_key     = '';
-		protected $client_secret  = '';
-		protected $api_url        = 'https://sandbox-quickbooks.api.intuit.com/';
-		protected $scope          = 'com.intuit.quickbooks.accounting';
-		protected $callback_uri   = '';
-		protected $sandbox        = true;
-		protected $access_token   = '';
-		protected $refresh_token  = '';
-		protected $realm_id       = '';
-		protected $is_authorizing = null;
-		protected $initiated      = false;
-		protected $autoredirect_authoriziation = true;
+		/**
+		 * Error data storage
+		 *
+		 * @var Storage\Store_Interface
+		 */
+		protected $error_store;
+
+		/**
+		 * Discovery object
+		 *
+		 * @var Discover
+		 */
 		protected $discovery;
+
+		/**
+		 * The QuickBooks Online App Client ID and Secret, obtained from the developer dashboard.
+		 *
+		 * Required. Identifies which app is making the request. Obtain these values from
+		 * the Keys tab on the app profile via My Apps on the developer site.
+		 *
+		 * There are two versions of these keys key:
+		 * 	Development key—use only in the sandbox environment.
+		 *  	Production key—use only in the production environment.
+		 *
+		 * @var string
+		 */
+		protected $client_id = '';
+		protected $client_secret = '';
+
+		/**
+		 * The QuickBooks API URL. Will default to sandbox mode.
+		 *
+		 * for production: https://quickbooks.api.intuit.com/
+		 *
+		 * @var string
+		 */
+		protected $api_url = 'https://sandbox-quickbooks.api.intuit.com/';
+
+		/**
+		 * Whether client is in sandbox (developer testing) mode. Defaults to true.
+		 *
+		 * @var boolean
+		 */
+		protected $sandbox = true;
+
+		/**
+		 * Space-delimited set of permissions that the application requests.
+		 * Defaults to the accounting scope.
+		 *
+		 * Identifies the QuickBooks API access that your application is requesting.
+		 * The values passed in this parameter inform the consent screen that is shown to the user.
+		 *
+		 * @var string
+		 */
+		protected $scope = 'com.intuit.quickbooks.accounting';
+
+		/**
+		 * This app's authentication URI.
+		 *
+		 * Determines where the response is sent. The value of this parameter must exactly match
+		 * one of the values listed for this app in the app settings. This includes the
+		 * https scheme, the same case, and the trailing '/'. For the sandbox environment,
+		 * this list can include http://localhost (do not use HTTPS with localhost).
+		 * IP addresses are allowed for redirect URIs.
+		 *
+		 * @var string
+		 */
+		protected $callback_uri = '';
+
+		/**
+		 * Once authorized/authenticated, this is the token that must be used to access the QuickBooks API.
+		 *
+		 * @var string
+		 */
+		protected $access_token = '';
+
+		/**
+		 * Once authorized/authenticated, this is the token used when refreshing the access token.
+		 *
+		 * @var string
+		 */
+		protected $refresh_token  = '';
+
+		/**
+		 * Once authorized/authenticated, this is the Intuit assigned unique Id of the QuickBooks company,
+		 * also referred to as the companyID.  For more information, see Realm ID.
+		 *
+		 * For use with Accounting API, only.
+		 *
+		 * @var string
+		 */
+		protected $realm_id       = '';
+
+		/**
+		 * Internal flag to inform processes that authorization is in progress.
+		 *
+		 * @var null
+		 */
+		protected $is_authorizing = null;
+
+		/**
+		 * Internal flag to inform processes that object initiation has completed.
+		 *
+		 * @var boolean
+		 */
+		protected $initiated      = false;
+
+		/**
+		 * Flag to determine if we should auto-redirect to the QB authentication
+		 * if we have the Client ID and Client Secret.
+		 *
+		 * @var boolean
+		 */
+		protected $autoredirect_authoriziation = true;
 
 		/**
 		 * Connect object constructor.
@@ -52,7 +158,7 @@ if ( ! class_exists( 'Zao\QBO_API\Connect' ) ) :
 		 *
 		 * @param array $storage_classes (optional) override the storage classes.
 		 */
-		public function __construct( $storage_classes = array(), $sandbox = true ) {
+		public function __construct( $storage_classes = array() ) {
 			$storage_classes = wp_parse_args( $storage_classes, array(
 				'options_class' => 'Zao\QBO_API\Storage\Options',
 				'transients_class' => 'Zao\QBO_API\Storage\Transients',
@@ -91,16 +197,16 @@ if ( ! class_exists( 'Zao\QBO_API\Connect' ) ) :
 		 *
 		 * @since 0.1.0
 		 *
-		 * @param array $args Arguments containing 'client_key', 'client_secret',
+		 * @param array $args Arguments containing 'client_id', 'client_secret',
 		 *                    'callback_uri', 'sandbox', 'autoredirect_authoriziation'
 		 */
 		public function init( $args ) {
 			foreach ( wp_parse_args( $args, array(
-				'client_key'                  => '',
-				'client_secret'               => '',
-				'callback_uri'                => '',
-				'sandbox'                     => true,
-				'autoredirect_authoriziation' => true,
+				'client_id'                   => $this->client_id,
+				'client_secret'               => $this->client_secret,
+				'callback_uri'                => $this->callback_uri,
+				'sandbox'                     => $this->sandbox,
+				'autoredirect_authoriziation' => $this->autoredirect_authoriziation,
 			) ) as $key => $arg ) {
 				$this->{$key} = $arg;
 			}
@@ -165,7 +271,7 @@ if ( ! class_exists( 'Zao\QBO_API\Connect' ) ) :
 		public function get_full_authorization_url() {
 			$this->set_object_properties();
 
-			if ( ! $this->client_key ) {
+			if ( ! $this->client_id ) {
 				return new WP_Error( 'qbo_connect_api_missing_client_data', __( 'Missing client key.', 'qbo-connect' ), $this->args() );
 			}
 
@@ -174,7 +280,7 @@ if ( ! class_exists( 'Zao\QBO_API\Connect' ) ) :
 			$state = urlencode( 'step=authorize&nonce=' . wp_create_nonce( md5( __FILE__ ) ) );
 
 			$url_params = array(
-				'client_id'     => $this->client_key,
+				'client_id'     => $this->client_id,
 				'scope'         => $this->scope,
 				'redirect_uri'  => urlencode( $this->callback_uri ),
 				'response_type' => 'code',
@@ -286,7 +392,7 @@ if ( ! class_exists( 'Zao\QBO_API\Connect' ) ) :
 		 * @return mixed  WP_Error if authorization URL lookup fails.
 		 */
 		public function redirect_to_login() {
-			if ( ! $this->client_key ) {
+			if ( ! $this->client_id ) {
 				return new WP_Error( 'qbo_connect_api_missing_client_data', __( 'Missing client key.', 'qbo-connect' ), $this->args() );
 			}
 
@@ -372,6 +478,16 @@ if ( ! class_exists( 'Zao\QBO_API\Connect' ) ) :
 			exit();
 		}
 
+		/**
+		 * Make request for access token.
+		 *
+		 * @since  0.1.0
+		 *
+		 * @param  array  $args   Body request args.
+		 * @param  array  $errors Error codes/descriptions if request fails.
+		 *
+		 * @return mixed
+		 */
 		protected function _token_request( $args, $errors ) {
 			$this->set_callback_uri( $this->callback_uri ? $this->callback_uri : $this->get_requested_url() );
 
@@ -414,8 +530,15 @@ if ( ! class_exists( 'Zao\QBO_API\Connect' ) ) :
 			return $this->get_option( 'token_credentials' );
 		}
 
+		/**
+		 * Required headers for the token request to the QuickBooks Online Authentication API.
+		 *
+		 * @since  0.1.0
+		 *
+		 * @return array
+		 */
 		protected function _token_request_headers() {
-			$auth = 'Basic ' . base64_encode( $this->client_key . ':' . $this->client_secret );
+			$auth = 'Basic ' . base64_encode( $this->client_id . ':' . $this->client_secret );
 			return array(
 				'Authorization' => $auth,
 				'Accept'        => 'application/json',
@@ -455,7 +578,7 @@ if ( ! class_exists( 'Zao\QBO_API\Connect' ) ) :
 		 */
 		public function get_qb_data_service_args() {
 			return array(
-				'ClientID'        => $this->client_key,
+				'ClientID'        => $this->client_id,
 				'ClientSecret'    => $this->client_secret,
 				'accessTokenKey'  => $this->access_token,
 				'refreshTokenKey' => $this->refresh_token,
@@ -502,7 +625,7 @@ if ( ! class_exists( 'Zao\QBO_API\Connect' ) ) :
 		 */
 		public function args() {
 			return array(
-				'client_key'    => $this->client_key,
+				'client_id'     => $this->client_id,
 				'client_secret' => $this->client_secret,
 				'api_url'       => $this->api_url,
 				'auth_urls'     => $this->discovery->auth_urls,
@@ -523,6 +646,18 @@ if ( ! class_exists( 'Zao\QBO_API\Connect' ) ) :
 		public function set_api_url( $value ) {
 			$this->api_url = $value;
 			return $this->api_url;
+		}
+
+		/**
+		 * Sets the scope property
+		 *
+		 * @since 0.1.0
+		 *
+		 * @param string  $scope Scope to set
+		 */
+		public function set_scope( $scope ) {
+			$this->scope = $scope;
+			return $this->scope;
 		}
 
 		/**
@@ -560,7 +695,7 @@ if ( ! class_exists( 'Zao\QBO_API\Connect' ) ) :
 		 *
 		 * @return mixed Request URL or error
 		 */
-		function request_token_url() {
+		public function request_token_url() {
 			return $this->discovery->auth_urls->token_endpoint;
 		}
 
@@ -571,7 +706,7 @@ if ( ! class_exists( 'Zao\QBO_API\Connect' ) ) :
 		 *
 		 * @return mixed Authorization URL or error
 		 */
-		function request_authorize_url() {
+		public function request_authorize_url() {
 			return $this->discovery->auth_urls->authorization_endpoint;
 		}
 
