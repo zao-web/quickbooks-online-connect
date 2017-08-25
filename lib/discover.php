@@ -20,11 +20,11 @@ class Discover {
 	/**
 	 * Transients Store
 	 *
-	 * @var Storage\Transient_Interface
+	 * @var Storage\Transient_Store_Interface
 	 */
 	protected $transient;
 
-	public function __construct( Storage\Transient_Interface $transient ) {
+	public function __construct( Storage\Transient_Store_Interface $transient ) {
 		$this->transient = $transient
 			->set_key( 'qbo_api_connect_discovery' )
 			->set_expiration( WEEK_IN_SECONDS );

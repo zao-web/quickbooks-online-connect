@@ -1,7 +1,7 @@
 <?php
 namespace Zao\QBO_API\Storage;
 
-interface Transient_Interface {
+interface Transient_Store_Interface {
 
     /**
      * Retrieve stored option
