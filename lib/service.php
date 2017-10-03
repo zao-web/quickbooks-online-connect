@@ -172,9 +172,20 @@ class Service {
 	}
 
 	public function call_func( $to_call, $args = null ) {
-		return ! is_array( $args )
-			? call_user_func( $to_call )
-			: call_user_func_array( $to_call, $args );
+		try {
+
+			return ! is_array( $args )
+				? call_user_func( $to_call )
+				: call_user_func_array( $to_call, $args );
+
+		} catch ( Exception $e ) {
+			return new WP_Error(
+				'wc_qbo_integration_service_method_exception',
+				sprintf( __( 'There was an uncaught exception with the QuickBooks SDK: %s', 'qbo-connect' ), $e->getMessage() ),
+				$e
+			);
+
+		}
 	}
 
 	public function check_if_needing_to_refresh_token() {
