@@ -127,6 +127,8 @@ class Service {
 				$to_call = array( $this, 'facade_update' );
 				$args = array( $facade_class, $args );
 			}
+		} elseif ( 0 === strpos( $method, 'delete_' ) ) {
+			$to_call = array( $this, 'delete_entity' );
 		}
 
 		$result = $this->call_or_refresh_token( $to_call, $args );
@@ -144,6 +146,10 @@ class Service {
 		$updated_obj = call_user_func_array( array( $facade_class, 'update' ), $args );
 
 		return array( $updated_obj, $this->get_service()->Update( $updated_obj ) );
+	}
+
+	protected function delete_entity( $args ) {
+		return call_user_func( array( $this->get_service(), 'Delete' ), $args );
 	}
 
 	public function get_facade_class_from_method( $prefix, $method ) {
