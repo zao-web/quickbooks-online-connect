@@ -165,24 +165,18 @@ class Service {
 	}
 
 	public function call_or_refresh_token( $to_call, $args = null ) {
-		$result = $this->call_func( $to_call, $args );
-
-		if ( $this->check_if_needing_to_refresh_token() ) {
-			$refreshed = $this->refresh_token();
-			if ( $refreshed ) {
-				$result = $this->call_func( $to_call, $args );
-			}
-		}
-
-		return $result;
-	}
-
-	public function call_func( $to_call, $args = null ) {
 		try {
 
-			return ! is_array( $args )
-				? call_user_func( $to_call )
-				: call_user_func_array( $to_call, $args );
+			$result = $this->call_func( $to_call, $args );
+
+			if ( $this->check_if_needing_to_refresh_token() ) {
+				$refreshed = $this->refresh_token();
+				if ( $refreshed ) {
+					$result = $this->call_func( $to_call, $args );
+				}
+			}
+
+			return $result;
 
 		} catch ( Exception $e ) {
 			return new WP_Error(
@@ -190,8 +184,13 @@ class Service {
 				sprintf( __( 'There was an uncaught exception with the QuickBooks SDK: %s', 'qbo-connect' ), $e->getMessage() ),
 				$e
 			);
-
 		}
+	}
+
+	public function call_func( $to_call, $args = null ) {
+		return ! is_array( $args )
+			? call_user_func( $to_call )
+			: call_user_func_array( $to_call, $args );
 	}
 
 	public function check_if_needing_to_refresh_token() {
