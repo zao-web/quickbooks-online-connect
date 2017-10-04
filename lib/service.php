@@ -81,7 +81,13 @@ class Service {
 	}
 
 	public function get_company_info() {
-		return $this->call_or_refresh_token( array( $this, '_get_company_info' ) );
+		static $company_info = null;
+
+		if ( null === $company_info || is_wp_error( $company_info ) ) {
+			$company_info = $this->call_or_refresh_token( array( $this, '_get_company_info' ) );
+		}
+
+		return $company_info;
 	}
 
 	protected function _get_company_info() {
@@ -95,22 +101,23 @@ class Service {
 				// echo "<p>The Helper message is: " . $error->getOAuthHelperError() . "\n</p>";
 				// echo "<p>The Response message is: " . $error->getResponseBody() . "\n</p>";
 
-				return new WP_Error(
+				$company_info = new WP_Error(
 					'wc_qbo_integration_company_fail',
 					__( 'Could not find the Quickbooks company.', 'qbo-connect' ),
 					$error
 				);
 			}
 
-			return $company_info;
-
 		} catch ( Exception $e ) {
-			return new WP_Error(
+
+			$company_info = new WP_Error(
 				'wc_qbo_integration_company_fail',
 				__( 'Could not find the Quickbooks company.', 'qbo-connect' ),
 				$e
 			);
 		}
+
+		return $company_info;
 	}
 
 	public function __call( $method, $args ) {
