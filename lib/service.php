@@ -156,7 +156,7 @@ class Service {
 	}
 
 	protected function delete_entity( $args ) {
-		return call_user_func( array( $this->get_service(), 'Delete' ), $args );
+		return $this->call_or_refresh_token( array( $this->get_service(), 'Delete' ), array( $args ) );
 	}
 
 	public function get_facade_class_from_method( $prefix, $method ) {
