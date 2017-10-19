@@ -20,14 +20,14 @@ if ( ! class_exists( 'Zao\QBO_API\Connect' ) ) :
 	 *
 	 * @author  Justin Sternberg <jt@zao.is>
 	 * @package Connect
-	 * @version 0.1.0
+	 * @version 0.1.2
 	 */
 	class Connect {
 
 		/**
 		 * Connect version
 		 */
-		const VERSION = '0.1.0';
+		const VERSION = '0.1.2';
 
 		/**
 		 * Option storage
@@ -153,6 +153,8 @@ if ( ! class_exists( 'Zao\QBO_API\Connect' ) ) :
 
 		/**
 		 * Flag to determine if we should reauthorize the connection.
+		 *
+		 * @since 0.1.2
 		 *
 		 * @var boolean
 		 */
