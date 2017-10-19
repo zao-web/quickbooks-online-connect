@@ -152,6 +152,13 @@ if ( ! class_exists( 'Zao\QBO_API\Connect' ) ) :
 		protected $autoredirect_authoriziation = true;
 
 		/**
+		 * Flag to determine if we should reauthorize the connection.
+		 *
+		 * @var boolean
+		 */
+		protected $reauthorize_connection = false;
+
+		/**
 		 * Connect object constructor.
 		 *
 		 * @since 0.1.0
@@ -203,7 +210,8 @@ if ( ! class_exists( 'Zao\QBO_API\Connect' ) ) :
 		 * @since 0.1.0
 		 *
 		 * @param array $args Arguments containing 'client_id', 'client_secret',
-		 *                    'callback_uri', 'sandbox', 'autoredirect_authoriziation'
+		 *                    'callback_uri', 'sandbox', 'autoredirect_authoriziation',
+		 *                    'reauthorize_connection'
 		 */
 		public function init( $args ) {
 			foreach ( wp_parse_args( $args, array(
@@ -212,6 +220,7 @@ if ( ! class_exists( 'Zao\QBO_API\Connect' ) ) :
 				'callback_uri'                => $this->callback_uri,
 				'sandbox'                     => $this->sandbox,
 				'autoredirect_authoriziation' => $this->autoredirect_authoriziation,
+				'reauthorize_connection'      => $this->reauthorize_connection,
 			) ) as $key => $arg ) {
 				$this->{$key} = $arg;
 			}
@@ -385,9 +394,9 @@ if ( ! class_exists( 'Zao\QBO_API\Connect' ) ) :
 		 */
 		public function maybe_redirect_to_authorization() {
 			if (
-				$this->autoredirect_authoriziation
+				$this->autoredirect_authoriziation || $this->reauthorize_connection
 				&& ! $this->is_authorizing()
-				&& ! $this->connected()
+				&& ( ! $this->connected() || $this->reauthorize_connection )
 			) {
 				return $this->redirect_to_login();
 			}
