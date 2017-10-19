@@ -16,17 +16,18 @@ class Service {
 
 	protected $service = null;
 	protected $args = array();
+	protected static $default_args = array(
+		'auth_mode'       => 'oauth2',
+		'ClientID'        => '',
+		'ClientSecret'    => '',
+		'accessTokenKey'  => '',
+		'refreshTokenKey' => '',
+		'QBORealmID'      => '',
+		'baseUrl'         => 'https://sandbox-quickbooks.api.intuit.com/',
+	);
 
 	public function __construct( array $args ) {
-		$this->args = wp_parse_args( $args, array(
-			'auth_mode'       => 'oauth2',
-			'ClientID'        => '',
-			'ClientSecret'    => '',
-			'accessTokenKey'  => '',
-			'refreshTokenKey' => '',
-			'QBORealmID'      => '',
-			'baseUrl'         => 'https://sandbox-quickbooks.api.intuit.com/',
-		) );
+		$this->args = wp_parse_args( $args, self::$default_args );
 	}
 
 	/**
