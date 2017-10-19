@@ -28,6 +28,8 @@ class Service {
 
 	public function __construct( array $args ) {
 		$this->args = wp_parse_args( $args, self::$default_args );
+
+		add_action( 'zao_qbo_api_connect_update_args', array( $this, 'update_args' ) );
 	}
 
 	/**
@@ -56,6 +58,27 @@ class Service {
 		}
 
 		return $this->service;
+	}
+
+	/**
+	 * Update the service arguments.
+	 *
+	 * @since  0.1.1
+	 *
+	 * @param  array  $args Array of arguments to update with.
+	 *
+	 * @return array        Updated arguments.
+	 */
+	public function update_args( array $args ) {
+		$before     = $this->args;
+		$this->args = wp_parse_args( $args, wp_parse_args( $before, self::$default_args ) );
+
+		if ( $before !== $this->args ) {
+			do_action( 'zao_qbo_api_connect_updated_args', $this->args );
+			$this->service = null;
+		}
+
+		return $this->args;
 	}
 
 	public function query( $query ) {
@@ -218,8 +241,11 @@ class Service {
 			return false;
 		}
 
-		$this->args['accessTokenKey']  = $token->access_token;
-		$this->args['refreshTokenKey'] = $token->refresh_token;
+		// Trigger a token update for all instances.
+		do_action( 'zao_qbo_api_connect_update_args', array(
+			'accessTokenKey'  => $token->access_token,
+			'refreshTokenKey' => $token->refresh_token,
+		) );
 
 		return $this->get_service( true );
 	}
