@@ -27,7 +27,7 @@ if ( ! class_exists( 'Zao\QBO_API\Connect' ) ) :
 		/**
 		 * Connect version
 		 */
-		const VERSION = '0.1.2';
+		const VERSION = '0.1.3';
 
 		/**
 		 * Option storage
@@ -398,7 +398,7 @@ if ( ! class_exists( 'Zao\QBO_API\Connect' ) ) :
 			if (
 				$this->autoredirect_authoriziation || $this->reauthorize_connection
 				&& ! $this->is_authorizing()
-				&& ( ! $this->connected() || $this->reauthorize_connection )
+				&& ( ! $this->token_acquired() || $this->reauthorize_connection )
 			) {
 				return $this->redirect_to_login();
 			}
@@ -628,13 +628,25 @@ if ( ! class_exists( 'Zao\QBO_API\Connect' ) ) :
 		}
 
 		/**
-		 * Tests whether connection has been created.
+		 * Tests whether the tokens were acquired.
+		 * Only here for back-compat, but is not a technically correct term.
 		 *
 		 * @since  0.1.0
 		 *
 		 * @return bool
 		 */
 		public function connected() {
+			return $this->token_acquired();
+		}
+
+		/**
+		 * Tests whether the tokens were acquired.
+		 *
+		 * @since  0.1.3
+		 *
+		 * @return bool
+		 */
+		public function token_acquired() {
 			return (bool) $this->get_option( 'token_credentials' );
 		}
 
